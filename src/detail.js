@@ -143,6 +143,8 @@ function renderSeries(detail) {
 
   const rows = [
     ['Measure', detail.title],
+    // The computed line moves here once reasoning takes the card face.
+    ['Reading', detail.computedContext],
     ['Units', detail.units],
     ['Frequency', detail.frequency],
     ['As of', detail.asOf],

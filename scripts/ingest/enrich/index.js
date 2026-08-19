@@ -49,6 +49,7 @@ export async function runEnrichment({ dataDir, dryRun, estimateOnly, existingDet
 
   // ---- 1. Collect whatever the previous run submitted ----
   const parallels = []
+  const reasonings = []
   let pending = null
   try {
     pending = JSON.parse(await readFile(pendingPath, 'utf8'))
@@ -61,12 +62,14 @@ export async function runEnrichment({ dataDir, dryRun, estimateOnly, existingDet
       const result = await collectBatch(pending.batchId, apiKey)
       if (result.done) {
         parallels.push(...result.verified)
+        reasonings.push(...result.reasonings)
         ledger = recordSpend(ledger, result.usage)
         report.collected = {
           batch: pending.batchId,
-          claimed: result.claimed,
-          verified: result.verified.length,
-          rejected: result.claimed - result.verified.length,
+          precedentsClaimed: result.claimed,
+          precedentsVerified: result.verified.length,
+          precedentsRejected: result.claimed - result.verified.length,
+          reasonings: result.reasonings.length,
           errored: result.errored,
           cost: `$${(result.usage.inputTokens * 5e-7 + result.usage.outputTokens * 2.5e-6).toFixed(5)}`,
         }
@@ -76,7 +79,7 @@ export async function runEnrichment({ dataDir, dryRun, estimateOnly, existingDet
         if (!dryRun) await writeFile(pendingPath, JSON.stringify({ batchId: null }))
       } else {
         report.collected = { batch: pending.batchId, status: result.status, note: 'still processing' }
-        return { ...report, parallels }
+        return { ...report, parallels, reasonings }
       }
     } catch (err) {
       report.collectError = err.message
@@ -84,7 +87,17 @@ export async function runEnrichment({ dataDir, dryRun, estimateOnly, existingDet
     }
   }
 
-  return { ...report, parallels, ledger, ledgerPath, pendingPath, quota, affordable, estimateOnly }
+  return {
+    ...report,
+    parallels,
+    reasonings,
+    ledger,
+    ledgerPath,
+    pendingPath,
+    quota,
+    affordable,
+    estimateOnly,
+  }
 }
 
 /** Second half: choose candidates and submit. Separated so the caller can rank first. */
@@ -108,11 +121,15 @@ export async function submitNextBatch(state, cards, existingDetails) {
     }
   }
 
-  const { batchId, submitted, submittedIds } = await submitBatch(candidates, process.env.ANTHROPIC_API_KEY)
+  const { batchId, submitted, submittedIds, breakdown } = await submitBatch(
+    candidates,
+    process.env.ANTHROPIC_API_KEY,
+    existingDetails,
+  )
   await writeFile(pendingPath, JSON.stringify({ batchId, submittedIds, submittedAt: new Date().toISOString() }))
   await saveLedger(ledgerPath, ledger)
 
-  return { submitted, batchId }
+  return { submitted, batchId, breakdown }
 }
 
 export async function persistLedger(state) {

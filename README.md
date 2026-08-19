@@ -99,6 +99,13 @@ top, otherwise it would hijack normal reading scroll.
 | **Wikidata** | — | Structured chain and facts for history cards. |
 | **FRED** St. Louis Fed | ✅ | 85 series → ~73 cards. US and European macro, rates, energy, metals, agricultural commodities, bilateral trade flows, FX and indices. |
 
+**A series only becomes a card when it is doing something.** Of 85 series, ~30
+qualify on a given day: a multi-year extreme, 1.5σ from its ten-year average, a
+2σ single-period move, or a year-on-year change in the top decile of its own
+history. The first version had no such gate and produced 67 cards, 39 of which
+said nothing beyond the current value — "ECB deposit rate 2.3%, up 0.3 points"
+is a reading, not news, and it is not worth a full screen.
+
 Every FRED series id in `content/series.js` was probed against the API for
 existence **and recency** before being added. That matters more than it sounds:
 FRED keeps discontinued series queryable and the response looks completely

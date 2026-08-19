@@ -14,6 +14,25 @@ const SPARK_POINTS = 64
 const NOTABLE_SIGMA = 1.5
 
 /**
+ * Every card has to earn its place, not just markets ones.
+ *
+ * Giving a full screen to "ECB deposit rate 2.3%, up 0.3 points on a year ago"
+ * is a waste of a swipe: it is a reading, not news. Of 67 economic cards on the
+ * first pass, 39 said nothing beyond the current value. A series now needs to
+ * be doing something genuinely unusual to appear at all.
+ */
+const NOTABILITY = {
+  // A record or multi-year extreme.
+  EXTREME_YEARS: 3,
+  // Standard deviations from the ten-year mean.
+  Z_SCORE: 1.5,
+  // A single-period move this many sigma against the series' own volatility.
+  MOVE_SIGMA: 2,
+  // Year-on-year change in the top/bottom decile of this series' own history.
+  YOY_PERCENTILE: 0.9,
+}
+
+/**
  * How old the newest observation may be, by publication frequency.
  *
  * FRED keeps discontinued series queryable, so a dead one returns a perfectly
@@ -161,6 +180,61 @@ function computeStats(points, config) {
   }
 }
 
+/**
+ * Every year-on-year change this series has ever posted, so today's can be
+ * judged against its own history rather than an arbitrary threshold. A 3%
+ * move is dramatic for unemployment and nothing for natural gas.
+ */
+function yoyHistory(points) {
+  const out = []
+  let j = 0
+  for (let i = 0; i < points.length; i++) {
+    const target = Date.parse(points[i].date) - 365 * 86_400_000
+    while (j < i && Date.parse(points[j + 1]?.date ?? 0) <= target) j++
+    const prior = points[j]
+    if (!prior || prior === points[i] || !prior.value) continue
+    if (Date.parse(points[i].date) - Date.parse(prior.date) < 300 * 86_400_000) continue
+    out.push(Math.abs(((points[i].value - prior.value) / Math.abs(prior.value)) * 100))
+  }
+  return out
+}
+
+function percentileOf(sorted, value) {
+  if (sorted.length === 0) return 0
+  let lo = 0
+  let hi = sorted.length
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1
+    if (sorted[mid] < value) lo = mid + 1
+    else hi = mid
+  }
+  return lo / sorted.length
+}
+
+/** Decide whether this reading is worth a whole screen, and say why. */
+function assessNotability(stats, points) {
+  const reasons = []
+
+  const extremeAgeYears = stats.extreme?.since
+    ? (Date.parse(stats.latest.date) - Date.parse(stats.extreme.since)) / (365 * 86_400_000)
+    : stats.extreme
+      ? Infinity // no `since` means it is the extreme of the whole window
+      : 0
+
+  if (stats.extreme && extremeAgeYears >= NOTABILITY.EXTREME_YEARS) reasons.push('extreme')
+  if (Math.abs(stats.z) >= NOTABILITY.Z_SCORE) reasons.push('far-from-average')
+  if (stats.moveSigma >= NOTABILITY.MOVE_SIGMA) reasons.push('sharp-move')
+
+  if (stats.yoyPct !== null) {
+    const history = yoyHistory(points).sort((a, b) => a - b)
+    if (percentileOf(history, Math.abs(stats.yoyPct)) >= NOTABILITY.YOY_PERCENTILE) {
+      reasons.push('unusual-year')
+    }
+  }
+
+  return { notable: reasons.length > 0, reasons, extremeAgeYears }
+}
+
 function contextSentence(stats, config) {
   const parts = []
 
@@ -237,7 +311,8 @@ export async function fetchFred() {
   const startStr = start.toISOString().slice(0, 10)
 
   const cards = []
-  const skipped = []
+  const skipped = [] // genuinely broken: fetch failed, stale, too few points
+  const unremarkable = [] // healthy but not doing anything worth a screen
 
   for (const config of SERIES) {
     let raw
@@ -266,9 +341,26 @@ export async function fetchFred() {
     }
 
     const stats = computeStats(points, config)
+    const notability = assessNotability(stats, points)
 
-    // Markets cards only when something actually happened.
-    if (config.notableOnly && stats.moveSigma < NOTABLE_SIGMA && !stats.extreme) continue
+    if (process.env.FRED_DEBUG) {
+      console.log(
+        `${config.id.padEnd(20)} z=${stats.z.toFixed(2).padStart(6)} moveSigma=${stats.moveSigma.toFixed(2).padStart(6)}` +
+          ` yoyPct=${String(stats.yoyPct === null ? 'null' : stats.yoyPct.toFixed(1)).padStart(7)}` +
+          ` extreme=${stats.extreme ? `${stats.extreme.kind}/${stats.extreme.since ?? 'window'}` : 'none'}` +
+          ` ageY=${notability.extremeAgeYears === Infinity ? 'inf' : notability.extremeAgeYears.toFixed(1)}` +
+          ` -> ${notability.reasons.join('+') || 'NOT NOTABLE'}`,
+      )
+    }
+
+    // Markets keep their tighter same-day rule; everything else must be doing
+    // something genuinely unusual to be worth a screen.
+    if (config.notableOnly) {
+      if (stats.moveSigma < NOTABLE_SIGMA && !notability.notable) continue
+    } else if (!notability.notable) {
+      unremarkable.push(config.id)
+      continue
+    }
 
     const value = formatValue(stats.latest.value, config)
     const spark = downsample(points, SPARK_POINTS).map((p) => Number(p.value.toFixed(4)))
@@ -309,11 +401,20 @@ export async function fetchFred() {
             yearAgo: stats.yearAgo ? formatValue(stats.yearAgo.value, config) : null,
             extreme: stats.extreme,
             z: Number(stats.z.toFixed(2)),
+            yoyPct: stats.yoyPct === null ? null : Number(stats.yoyPct.toFixed(1)),
           },
+          // Why this cleared the bar — also the input the reasoning prompt uses.
+          notability: notability.reasons,
         },
       }),
     )
   }
 
-  return { cards, skipped: skipped.length ? `${skipped.length} series unavailable` : undefined }
+  // Keep these apart in the report. Folding "nothing happened today" into
+  // "the API failed" is how a real outage hides behind a quiet market.
+  const notes = []
+  if (unremarkable.length) notes.push(`${unremarkable.length} unremarkable`)
+  if (skipped.length) notes.push(`${skipped.length} UNAVAILABLE: ${skipped.join('; ')}`)
+
+  return { cards, skipped: notes.length ? notes.join(' | ') : undefined }
 }

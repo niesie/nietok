@@ -112,16 +112,48 @@ async function main() {
   // Attach verified parallels, and mark every card we paid to ask about so a
   // "no precedent found" answer is not purchased again next run.
   const byId = new Map(finalCards.map((c) => [c.id, c]))
+
+  /**
+   * Reasoning replaces the computed context on the card face, because that
+   * context ("up 0.3 points on a year ago") was the thing that made economic
+   * cards not worth a swipe. The computed line is kept in the detail.
+   */
+  const applyReasoning = (card, reasoning) => {
+    if (!card || !reasoning) return
+    if (!card.detail.computedContext) card.detail.computedContext = card.dek
+    card.detail.reasoning = reasoning
+    card.dek = reasoning
+  }
+
+  // Re-apply anything a previous run already paid for.
+  for (const card of finalCards) {
+    const prior = existingDetails[card.id]
+    if (prior?.reasoning) applyReasoning(card, prior.reasoning)
+    if (prior?.parallel) card.detail.parallel = prior.parallel
+    if (prior?.parallelAttempted) card.detail.parallelAttempted = true
+    if (prior?.reasoningAttempted) card.detail.reasoningAttempted = true
+  }
+
   for (const parallel of enrichState.parallels ?? []) {
     const card = byId.get(parallel.cardId)
     if (card) card.detail.parallel = parallel
   }
-  for (const id of enrichState.attempted ?? []) {
-    const card = byId.get(id)
-    if (card) card.detail.parallelAttempted = true
+  for (const { cardId, reasoning } of enrichState.reasonings ?? []) {
+    applyReasoning(byId.get(cardId), reasoning)
   }
-  if (enrichState.parallels?.length) {
-    console.log(`llm: attached ${enrichState.parallels.length} verified parallel(s)`)
+
+  // Mark every id we paid to ask about, so a null answer is not bought twice.
+  for (const raw of enrichState.attempted ?? []) {
+    const card = byId.get(raw.slice(2))
+    if (!card) continue
+    if (raw.startsWith('e-')) card.detail.reasoningAttempted = true
+    else card.detail.parallelAttempted = true
+  }
+
+  if (enrichState.parallels?.length || enrichState.reasonings?.length) {
+    console.log(
+      `llm: attached ${enrichState.parallels?.length ?? 0} precedent(s), ${enrichState.reasonings?.length ?? 0} reasoning(s)`,
+    )
   }
 
   const submitted = await submitNextBatch(enrichState, finalCards, existingDetails)
