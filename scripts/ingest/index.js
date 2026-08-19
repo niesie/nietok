@@ -1,8 +1,10 @@
+import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { parseArgs } from 'node:util'
 
 import { linkHistoryToNews, linkSameDay } from './crosslink.js'
 import { dedupe } from './dedupe.js'
+import { persistLedger, runEnrichment, submitNextBatch } from './enrich/index.js'
 import { applyQuota } from './quota.js'
 import { rank } from './rank.js'
 import { writeFeed } from './write.js'
@@ -16,12 +18,18 @@ const { values: args } = parseArgs({
   options: {
     'dry-run': { type: 'boolean', default: false },
     limit: { type: 'string' },
+    // Walks the enrichment queue and prints projected cost without calling
+    // anything. Run this before the first uncapped run.
+    'llm-estimate': { type: 'boolean', default: false },
+    'llm-cap': { type: 'string' },
   },
   strict: false,
 })
 
 const DRY_RUN = args['dry-run']
 const LIMIT = args.limit ? Number(args.limit) : null
+const ESTIMATE_ONLY = args['llm-estimate']
+if (args['llm-cap']) process.env.LLM_MONTHLY_CAP_USD = args['llm-cap']
 
 const SOURCES = [
   { name: 'guardian', run: fetchGuardian },
@@ -83,6 +91,43 @@ async function main() {
 
   // Under public/ so Vite serves it in dev and copies it into dist/ on build.
   const path = join(process.cwd(), 'public', 'data', DRY_RUN ? 'feed.sample.json' : 'feed.json')
+  // ---- LLM enrichment (Phase 4) ----
+  // Runs after ranking so only cards worth seeing are ever candidates, and
+  // reads the previous details so a card is never paid for twice.
+  const dataDir = join(process.cwd(), 'public', 'data')
+  let existingDetails = {}
+  try {
+    const raw = await readFile(join(dataDir, DRY_RUN ? 'details.sample.json' : 'details.json'), 'utf8')
+    existingDetails = JSON.parse(raw)?.details ?? {}
+  } catch {
+    existingDetails = {}
+  }
+
+  const enrichState = await runEnrichment({ dataDir, dryRun: DRY_RUN, estimateOnly: ESTIMATE_ONLY, existingDetails })
+  console.log('\nllm budget:', enrichState.budget, `| per request ${enrichState.perRequest}`)
+  if (enrichState.skipped) console.log('llm: skipped —', enrichState.skipped)
+  if (enrichState.collected) console.log('llm collected:', enrichState.collected)
+  if (enrichState.collectError) console.warn('llm collect failed:', enrichState.collectError)
+
+  // Attach verified parallels, and mark every card we paid to ask about so a
+  // "no precedent found" answer is not purchased again next run.
+  const byId = new Map(finalCards.map((c) => [c.id, c]))
+  for (const parallel of enrichState.parallels ?? []) {
+    const card = byId.get(parallel.cardId)
+    if (card) card.detail.parallel = parallel
+  }
+  for (const id of enrichState.attempted ?? []) {
+    const card = byId.get(id)
+    if (card) card.detail.parallelAttempted = true
+  }
+  if (enrichState.parallels?.length) {
+    console.log(`llm: attached ${enrichState.parallels.length} verified parallel(s)`)
+  }
+
+  const submitted = await submitNextBatch(enrichState, finalCards, existingDetails)
+  console.log('llm submit:', submitted)
+  await persistLedger(enrichState)
+
   const history = finalCards.filter((c) => c.type === 'history')
   console.log('history context:', {
     sameDay: history.filter((c) => c.detail.sameDay?.length).length,

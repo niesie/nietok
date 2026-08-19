@@ -12,6 +12,7 @@
     "validate": "node scripts/validate.js"
   },
   "devDependencies": {
+    "@anthropic-ai/sdk": "^0.118.0",
     "fast-xml-parser": "^5.11.0",
     "vite": "^8.2.1"
   }

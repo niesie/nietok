@@ -102,6 +102,39 @@ function renderFacts(detail) {
   return wrap
 }
 
+/**
+ * A verified historical precedent for a current story.
+ *
+ * Sits above everything else on a news card: it is the one thing here that no
+ * amount of keyword matching could produce, and every one shown has had its
+ * Wikipedia article confirmed to exist.
+ */
+function renderParallel(detail) {
+  const p = detail.parallel
+  if (!p?.title) return null
+
+  const wrap = section('Historical precedent')
+  const box = el('div', 'precedent')
+
+  const head = el('div', 'precedent__head')
+  head.append(el('span', 'precedent__year', String(p.year)))
+  head.append(el('span', 'precedent__title', p.title))
+  box.append(head)
+
+  box.append(el('p', 'precedent__body', p.parallel))
+
+  if (p.url) {
+    const link = el('a', 'precedent__link', 'Read about it →')
+    link.href = p.url
+    link.target = '_blank'
+    link.rel = 'noopener noreferrer'
+    box.append(link)
+  }
+
+  wrap.append(box)
+  return wrap
+}
+
 /** Econ cards: the series behind the number. */
 function renderSeries(detail) {
   if (!detail.seriesId) return null
@@ -210,7 +243,14 @@ function build(card, detail) {
 
   // The four context sections, in the order they earn their place: where this
   // sits in a sequence, the hard facts, the same-day timeline, then today.
-  for (const node of [renderSeries(d), renderChain(d), renderFacts(d), renderSameDay(d, card), renderRelatedNews(d)]) {
+  for (const node of [
+    renderParallel(d),
+    renderSeries(d),
+    renderChain(d),
+    renderFacts(d),
+    renderSameDay(d, card),
+    renderRelatedNews(d),
+  ]) {
     if (node) scroller.append(node)
   }
 

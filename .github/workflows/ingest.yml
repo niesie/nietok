@@ -53,6 +53,12 @@ jobs:
           GUARDIAN_KEY: ${{ secrets.GUARDIAN_KEY }}
           FRED_KEY: ${{ secrets.FRED_KEY }}
           NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}
+          # Absent secret means enrichment is skipped, not that the run fails.
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # The ledger in public/data is carried by the Actions cache. If that
+          # cache is ever evicted the ledger resets to zero, which is why the
+          # Anthropic Console spend limit — not this file — is the real cap.
+          LLM_MONTHLY_CAP_USD: '2.20'
         run: npm run ingest
 
       - name: Save feed for the next run
