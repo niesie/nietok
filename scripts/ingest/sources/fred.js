@@ -13,6 +13,18 @@ const SPARK_POINTS = 64
 // "the S&P moved 0.2%" every single day.
 const NOTABLE_SIGMA = 1.5
 
+/**
+ * How old the newest observation may be, by publication frequency.
+ *
+ * FRED keeps discontinued series queryable, so a dead one returns a perfectly
+ * well-formed response with years-old numbers. Euro area unemployment
+ * (LRHUTTTTEZM156S) shipped in the live feed presenting a January 2023 figure
+ * as current — the API gave no hint anything was wrong. Anything past these
+ * bounds is dropped rather than published as today's number.
+ */
+const MAX_STALENESS_DAYS = { D: 14, W: 30, BW: 45, M: 120, Q: 300, SA: 550, A: 800 }
+const DEFAULT_STALENESS_DAYS = 200
+
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
@@ -35,7 +47,11 @@ function formatValue(value, { format, unit }) {
     case 'usdBillions':
       return `${value < 0 ? '−' : ''}$${(abs / 1000).toFixed(1)}bn`
     case 'usdMillions':
-      return `$${(abs / 1000).toFixed(1)}bn`
+      return `${value < 0 ? '−' : ''}$${(abs / 1000).toFixed(1)}bn`
+    case 'usdWhole':
+      return `$${Math.round(value).toLocaleString('en-US')}${unit ?? ''}`
+    case 'index':
+      return value.toFixed(1)
     default:
       // Explicit locale: the default follows the machine, and on a European
       // one "7692" formats as "7.692", which reads as seven point six.
@@ -236,6 +252,16 @@ export async function fetchFred() {
     if (config.transform === 'yoy_pct') points = toYoyPercent(points)
     if (points.length < 8) {
       skipped.push(`${config.id}: only ${points.length} usable observations`)
+      continue
+    }
+
+    // Staleness gate. A discontinued series looks identical to a live one in
+    // the response; only the observation date gives it away.
+    const freq = raw.meta?.frequency_short ?? ''
+    const limit = MAX_STALENESS_DAYS[freq] ?? DEFAULT_STALENESS_DAYS
+    const ageDays = (Date.now() - Date.parse(points[points.length - 1].date)) / 86_400_000
+    if (ageDays > limit) {
+      skipped.push(`${config.id}: stale (${Math.round(ageDays)}d old, ${freq} limit ${limit}d)`)
       continue
     }
 

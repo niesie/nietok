@@ -97,7 +97,15 @@ top, otherwise it would hijack normal reading scroll.
 | **RSS** — 13 outlets | — | ~280 cards. Politico EU, DW, France 24 (Europe); Al Jazeera, Arab News (Middle East); SCMP, The Diplomat, Times of India (Asia); Africanews, AllAfrica (Africa); MercoPress, Buenos Aires Herald (Latin America); The Moscow Times. |
 | **Wikipedia** on this day | — | ~390 history cards over a rolling 14-day window. |
 | **Wikidata** | — | Structured chain and facts for history cards. |
-| **FRED** St. Louis Fed | ✅ | 19 series → ~16 cards. Inflation, rates, growth, energy, trade, markets. |
+| **FRED** St. Louis Fed | ✅ | 85 series → ~73 cards. US and European macro, rates, energy, metals, agricultural commodities, bilateral trade flows, FX and indices. |
+
+Every FRED series id in `content/series.js` was probed against the API for
+existence **and recency** before being added. That matters more than it sounds:
+FRED keeps discontinued series queryable and the response looks completely
+normal, so euro area unemployment (`LRHUTTTTEZM156S`, dead since January 2023)
+shipped in the live feed presenting a 1,327-day-old figure as the current rate.
+`fred.js` now drops any observation older than its publication frequency allows
+rather than publishing it as today's number.
 
 The outlet spread is the point, not the card count. A geopolitics feed sourced
 from one British newspaper filters every story through one editorial lens;
