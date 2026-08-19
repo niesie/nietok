@@ -6,6 +6,7 @@ import { dedupe } from './dedupe.js'
 import { applyQuota } from './quota.js'
 import { rank } from './rank.js'
 import { writeFeed } from './write.js'
+import { fetchFred } from './sources/fred.js'
 import { fetchGuardian } from './sources/guardian.js'
 import { fetchOnThisDay } from './sources/wikimedia.js'
 
@@ -23,6 +24,7 @@ const LIMIT = args.limit ? Number(args.limit) : null
 const SOURCES = [
   { name: 'guardian', run: fetchGuardian },
   { name: 'wikimedia:onthisday', run: fetchOnThisDay },
+  { name: 'fred', run: fetchFred },
 ]
 
 async function main() {

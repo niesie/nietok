@@ -102,6 +102,37 @@ function renderFacts(detail) {
   return wrap
 }
 
+/** Econ cards: the series behind the number. */
+function renderSeries(detail) {
+  if (!detail.seriesId) return null
+  const wrap = section('The series')
+  const grid = el('dl', 'facts')
+
+  const rows = [
+    ['Measure', detail.title],
+    ['Units', detail.units],
+    ['Frequency', detail.frequency],
+    ['As of', detail.asOf],
+    ['Previous', detail.stats?.previous],
+    ['A year ago', detail.stats?.yearAgo],
+    [
+      'vs 10y average',
+      detail.stats?.z != null
+        ? `${detail.stats.z > 0 ? '+' : ''}${detail.stats.z.toFixed(2)}σ`
+        : null,
+    ],
+  ]
+
+  for (const [label, value] of rows) {
+    if (!value) continue
+    grid.append(el('dt', null, label), el('dd', null, String(value)))
+  }
+
+  if (!grid.childElementCount) return null
+  wrap.append(grid)
+  return wrap
+}
+
 /** The point of the whole app: this history, against today's news. */
 function renderRelatedNews(detail) {
   if (!detail.relatedNews?.length) return null
@@ -142,7 +173,11 @@ function build(card, detail) {
       ? historyDate({ detail: d })
       : `${card.source?.name ?? ''} · ${relativeTime(card.source?.publishedAt)}`
   scroller.append(el('div', 'detail__kicker', kicker))
-  scroller.append(el('h1', 'detail__headline', card.headline))
+  // An econ card's headline is bare number — meaningless without its series
+  // name, which lives in the kicker on the card face.
+  scroller.append(
+    el('h1', 'detail__headline', card.label ? `${card.label}: ${card.headline}` : card.headline),
+  )
 
   if (card.image?.url) {
     const figure = el('figure', 'detail__figure')
@@ -175,7 +210,7 @@ function build(card, detail) {
 
   // The four context sections, in the order they earn their place: where this
   // sits in a sequence, the hard facts, the same-day timeline, then today.
-  for (const node of [renderChain(d), renderFacts(d), renderSameDay(d, card), renderRelatedNews(d)]) {
+  for (const node of [renderSeries(d), renderChain(d), renderFacts(d), renderSameDay(d, card), renderRelatedNews(d)]) {
     if (node) scroller.append(node)
   }
 

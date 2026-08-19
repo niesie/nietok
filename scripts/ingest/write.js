@@ -62,7 +62,7 @@ function merge(existing, incoming) {
  * one.
  */
 function toFace(card) {
-  return {
+  const face = {
     id: card.id,
     type: card.type,
     headline: card.headline,
@@ -74,6 +74,13 @@ function toFace(card) {
     score: card.score,
     firstSeen: card.firstSeen,
   }
+
+  // Econ cards have no photograph — the sparkline is what makes them look like
+  // anything at all, so it has to travel with the face. 64 numbers per card.
+  if (card.detail?.spark?.length) face.spark = card.detail.spark
+  if (card.label) face.label = card.label
+
+  return face
 }
 
 export async function writeFeed(cards, { path, dryRun = false } = {}) {

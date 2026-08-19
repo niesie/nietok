@@ -38,6 +38,11 @@ function kickerParts(card) {
   if (card.type === 'history') {
     return [label, historyDate(card)].filter(Boolean)
   }
+  // Econ cards lead with the number, so the series name goes here instead of
+  // the source — "Economy · Brent crude · 2d ago" reads better than the source.
+  if (card.label) {
+    return [label, card.label, relativeTime(card.source?.publishedAt)].filter(Boolean)
+  }
   return [label, card.source?.name, relativeTime(card.source?.publishedAt)].filter(Boolean)
 }
 
@@ -48,6 +53,49 @@ function el(tag, className, text) {
   return node
 }
 
+const SVG_NS = 'http://www.w3.org/2000/svg'
+
+/**
+ * Sparkline for econ cards.
+ *
+ * Drawn on a 0-100 viewBox with preserveAspectRatio="none" so it stretches to
+ * whatever box CSS gives it — the shape is what carries meaning, not the
+ * aspect ratio. A flat series still renders as a centred line rather than
+ * dividing by a zero range.
+ */
+export function renderSparkline(values) {
+  const svg = document.createElementNS(SVG_NS, 'svg')
+  svg.setAttribute('class', 'spark')
+  svg.setAttribute('viewBox', '0 0 100 100')
+  svg.setAttribute('preserveAspectRatio', 'none')
+  svg.setAttribute('aria-hidden', 'true')
+
+  const min = Math.min(...values)
+  const max = Math.max(...values)
+  const range = max - min
+  const y = (v) => (range === 0 ? 50 : 100 - ((v - min) / range) * 92 - 4)
+  const x = (i) => (i / (values.length - 1)) * 100
+
+  const line = values.map((v, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(2)},${y(v).toFixed(2)}`).join(' ')
+
+  const area = document.createElementNS(SVG_NS, 'path')
+  area.setAttribute('class', 'spark__area')
+  area.setAttribute('d', `${line} L100,100 L0,100 Z`)
+
+  const path = document.createElementNS(SVG_NS, 'path')
+  path.setAttribute('class', 'spark__line')
+  path.setAttribute('d', line)
+
+  const dot = document.createElementNS(SVG_NS, 'circle')
+  dot.setAttribute('class', 'spark__dot')
+  dot.setAttribute('cx', x(values.length - 1).toFixed(2))
+  dot.setAttribute('cy', y(values[values.length - 1]).toFixed(2))
+  dot.setAttribute('r', '2.2')
+
+  svg.append(area, path, dot)
+  return svg
+}
+
 export function renderCard(card) {
   const article = el('article', `card card--${card.type}`)
   article.dataset.id = card.id
@@ -55,7 +103,13 @@ export function renderCard(card) {
   if (!card.image?.url) article.classList.add('card--noimage')
 
   const media = el('div', 'card__media')
-  if (card.image?.url) {
+
+  if (card.spark?.length > 1) {
+    // Econ and markets cards: the chart is the image.
+    const holder = el('div', 'card__spark')
+    holder.append(renderSparkline(card.spark))
+    media.append(holder)
+  } else if (card.image?.url) {
     const img = document.createElement('img')
     // Held in a data attribute — feed.js only sets src for cards near the
     // viewport, which is what keeps decoded-image memory bounded on a phone.

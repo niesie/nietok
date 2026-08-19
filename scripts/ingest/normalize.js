@@ -98,6 +98,9 @@ export function makeCard(partial) {
     id: partial.id,
     type: partial.type,
     headline: partial.headline,
+    // Econ cards put the number in the headline, so the series name needs
+    // somewhere else to live.
+    label: partial.label ?? null,
     dek: partial.dek ?? '',
     image: partial.image ?? null,
     source: partial.source,
