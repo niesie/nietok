@@ -49,7 +49,8 @@ export async function enrichWikipediaPages(titles) {
       action: 'query',
       format: 'json',
       formatversion: 2,
-      prop: 'pageimages|extracts',
+      prop: 'pageimages|extracts|pageprops',
+      ppprop: 'wikibase_item',
       piprop: 'thumbnail',
       pithumbsize: THUMB_WIDTH,
       exintro: 1,
@@ -82,6 +83,8 @@ export async function enrichWikipediaPages(titles) {
       const entry = {
         image: page.thumbnail?.source ? stripTracking(page.thumbnail.source) : null,
         extract: page.extract?.trim() || null,
+        // The Wikidata id is what unlocks the structured timeline and facts.
+        qid: page.pageprops?.wikibase_item ?? null,
       }
       result.set(page.title, entry)
       const original = aliases.get(page.title)

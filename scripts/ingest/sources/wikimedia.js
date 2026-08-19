@@ -1,5 +1,6 @@
 import { fetchWithRetry } from '../../lib/http.js'
 import { inferRegion, inferTopics, makeCard, makeId } from '../normalize.js'
+import { fetchWikidataContext } from './wikidata.js'
 import { enrichWikipediaPages, stripTracking } from './wikipedia-enrich.js'
 
 const FEED = 'https://api.wikimedia.org/feed/v1/wikipedia/en/onthisday/events'
@@ -98,6 +99,7 @@ export async function fetchOnThisDay({ days = 14 } = {}) {
   // here leave the feed's own thumbnail and short extract in place.
   const enriched = await enrichWikipediaPages(lookups)
 
+  const qids = []
   cards.forEach((card, i) => {
     const extra = enriched.get(lookups[i])
     if (!extra) return
@@ -105,7 +107,21 @@ export async function fetchOnThisDay({ days = 14 } = {}) {
     if (extra.extract && extra.extract.length > (card.detail.extract?.length ?? 0)) {
       card.detail.extract = extra.extract
     }
+    if (extra.qid) {
+      card.detail.qid = extra.qid
+      qids.push(extra.qid)
+    }
   })
+
+  // Structured sequence and facts: where the event sits relative to others.
+  const context = await fetchWikidataContext(qids)
+  for (const card of cards) {
+    const ctx = card.detail.qid ? context.get(card.detail.qid) : null
+    if (!ctx) continue
+    if (Object.keys(ctx.chain).length) card.detail.chain = ctx.chain
+    if (Object.keys(ctx.facts).length) card.detail.facts = ctx.facts
+    if (Object.keys(ctx.times).length) card.detail.times = ctx.times
+  }
 
   return { cards }
 }

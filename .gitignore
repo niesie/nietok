@@ -10,7 +10,12 @@ dist/
 
 # Ingest scratch
 .cache/
-public/data/feed.sample.json
+
+# Generated data — regenerated every CI run and carried between runs by the
+# Actions cache, not by git. Committing ~2.3 MB every three hours would add
+# roughly a gigabyte of history a year for content that is rebuilt anyway.
+# Run `npm run ingest` after cloning.
+public/data/
 
 # OS / editor
 .DS_Store

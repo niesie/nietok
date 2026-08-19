@@ -1,4 +1,5 @@
 import { historyDate, relativeTime } from './card/render.js'
+import { awaitDetail, detailsReady, getDetail } from './details.js'
 
 const CLOSE_THRESHOLD_PX = 90
 const CLOSE_VELOCITY = 0.55
@@ -24,13 +25,121 @@ function metaRow(label, value) {
   return row
 }
 
-function build(card) {
+function section(title) {
+  const wrap = el('section', 'detail__section')
+  wrap.append(el('h2', 'detail__sectionTitle', title))
+  return wrap
+}
+
+/** "Also on this day" — a vertical timeline, with this card marked. */
+function renderSameDay(detail, card) {
+  if (!detail.sameDay?.length) return null
+  const wrap = section(`Also on ${Number(detail.day)} ${MONTH_NAMES[Number(detail.month) - 1]}`)
+  const list = el('ol', 'timeline')
+
+  const entries = [...detail.sameDay, { id: card.id, year: detail.year, headline: card.headline, self: true }]
+    .sort((a, b) => (a.year ?? 0) - (b.year ?? 0))
+
+  for (const entry of entries) {
+    const item = el('li', `timeline__item${entry.self ? ' timeline__item--self' : ''}`)
+    item.append(el('span', 'timeline__year', String(entry.year ?? '')))
+    item.append(el('span', 'timeline__text', entry.headline))
+    list.append(item)
+  }
+  wrap.append(list)
+  return wrap
+}
+
+/** Where the event sits in a sequence: part-of nesting, and what it follows. */
+function renderChain(detail) {
+  const chain = detail.chain
+  if (!chain) return null
+  const wrap = section('Context')
+
+  if (chain.partOf?.length) {
+    const nest = el('ul', 'chain chain--nested')
+    for (const entry of chain.partOf) nest.append(el('li', 'chain__item', entry.label))
+    wrap.append(el('div', 'detail__label', 'Part of'), nest)
+  }
+
+  const sequence = el('ul', 'chain')
+  for (const entry of chain.follows ?? []) {
+    sequence.append(el('li', 'chain__item chain__item--before', `← ${entry.label}`))
+  }
+  for (const entry of chain.followedBy ?? []) {
+    sequence.append(el('li', 'chain__item chain__item--after', `→ ${entry.label}`))
+  }
+  if (sequence.childElementCount) {
+    wrap.append(el('div', 'detail__label', 'Sequence'), sequence)
+  }
+
+  return wrap.childElementCount > 1 ? wrap : null
+}
+
+/** Participants, location, casualties — the hard facts. */
+function renderFacts(detail) {
+  const facts = detail.facts
+  if (!facts) return null
+  const wrap = section('Facts')
+  const grid = el('dl', 'facts')
+
+  const rows = [
+    ['Participants', facts.participants?.map((f) => f.label).join(', ')],
+    ['Location', facts.location?.map((f) => f.label).join(', ')],
+    ['Country', facts.country?.map((f) => f.label).join(', ')],
+    ['Deaths', facts.deaths ? facts.deaths.toLocaleString() : null],
+  ]
+
+  let any = false
+  for (const [label, value] of rows) {
+    if (!value) continue
+    any = true
+    grid.append(el('dt', null, label), el('dd', null, value))
+  }
+
+  if (!any) return null
+  wrap.append(grid)
+  return wrap
+}
+
+/** The point of the whole app: this history, against today's news. */
+function renderRelatedNews(detail) {
+  if (!detail.relatedNews?.length) return null
+  const wrap = section('In today’s feed')
+  const list = el('ul', 'related')
+
+  for (const entry of detail.relatedNews) {
+    const item = el('li', 'related__item')
+    if (entry.url) {
+      const link = el('a', 'related__link', entry.headline)
+      link.href = entry.url
+      link.target = '_blank'
+      link.rel = 'noopener noreferrer'
+      item.append(link)
+    } else {
+      item.append(el('span', 'related__link', entry.headline))
+    }
+    if (entry.source) item.append(el('span', 'related__source', entry.source))
+    list.append(item)
+  }
+
+  wrap.append(list)
+  return wrap
+}
+
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+]
+
+function build(card, detail) {
+  const d = detail ?? {}
   scroller.replaceChildren()
   root.style.setProperty('--accent', `var(--accent-${card.type}, var(--accent-news))`)
 
   const kicker =
     card.type === 'history'
-      ? historyDate(card)
+      ? historyDate({ detail: d })
       : `${card.source?.name ?? ''} · ${relativeTime(card.source?.publishedAt)}`
   scroller.append(el('div', 'detail__kicker', kicker))
   scroller.append(el('h1', 'detail__headline', card.headline))
@@ -64,13 +173,19 @@ function build(card) {
 
   scroller.append(body)
 
+  // The four context sections, in the order they earn their place: where this
+  // sits in a sequence, the hard facts, the same-day timeline, then today.
+  for (const node of [renderChain(d), renderFacts(d), renderSameDay(d, card), renderRelatedNews(d)]) {
+    if (node) scroller.append(node)
+  }
+
   const meta = el('div', 'detail__meta')
-  if (card.type === 'history' && card.detail?.year) {
-    meta.append(metaRow('When', historyDate(card)))
-    if (card.detail.articleTitle) meta.append(metaRow('Subject', card.detail.articleTitle))
+  if (card.type === 'history' && d.year) {
+    meta.append(metaRow('When', historyDate({ detail: d })))
+    if (d.articleTitle) meta.append(metaRow('Subject', d.articleTitle))
   } else {
-    if (card.detail?.section) meta.append(metaRow('Section', card.detail.section))
-    if (card.detail?.byline) meta.append(metaRow('By', card.detail.byline))
+    if (d.section) meta.append(metaRow('Section', d.section))
+    if (d.byline) meta.append(metaRow('By', d.byline))
     if (card.source?.publishedAt) {
       meta.append(metaRow('Published', new Date(card.source.publishedAt).toLocaleString()))
     }
@@ -99,15 +214,27 @@ function build(card) {
   scroller.append(actions)
 }
 
-export function openDetail(card) {
-  build(card)
+export async function openDetail(card) {
+  // Open immediately with whatever is already loaded — the face alone is
+  // enough for a headline, image and summary, so the overlay never waits on a
+  // network round trip to appear.
+  build(card, getDetail(card.id))
   root.hidden = false
   scroller.scrollTop = 0
-  // Force a frame so the transform transition actually runs from 100%.
   requestAnimationFrame(() => {
     root.classList.add('is-open')
     isOpen = true
   })
+
+  // If the tap beat the details fetch, fill in once it lands.
+  if (!detailsReady()) {
+    const detail = await awaitDetail(card.id)
+    if (isOpen && detail) {
+      const scrollTop = scroller.scrollTop
+      build(card, detail)
+      scroller.scrollTop = scrollTop
+    }
+  }
 }
 
 export function closeDetail() {

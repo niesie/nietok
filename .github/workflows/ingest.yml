@@ -9,12 +9,12 @@ on:
     branches: [main]
 
 permissions:
-  contents: write # committing the refreshed feed
+  contents: read
   pages: write
   id-token: write
 
-# A manual run overlapping the cron would double-fetch and, once the Phase 4
-# budget ledger exists, read the same ledger twice and double-spend.
+# Two runs ingesting at once would waste API quota and, once the Phase 4 budget
+# ledger exists, read the same ledger twice and double-spend.
 concurrency:
   group: ingest
   cancel-in-progress: false
@@ -32,45 +32,35 @@ jobs:
 
       - run: npm ci
 
-      # Only refresh the feed on a schedule or a manual run. A code push should
-      # deploy what is already committed — ingesting on every push burns the
-      # Guardian daily quota and is what made two runs race to commit.
+      # The generated feed is data, not source, so it is cached rather than
+      # committed. Committing ~2.3 MB every three hours would add roughly a
+      # gigabyte of git history a year, and the commit-and-push was itself what
+      # made concurrent runs race each other.
+      #
+      # The restore is only for continuity: it carries firstSeen timestamps and
+      # cards whose source has since dropped them. A cache miss costs nothing
+      # but a feed rebuilt purely from what the APIs return right now.
+      - name: Restore previous feed
+        uses: actions/cache/restore@v4
+        with:
+          path: public/data
+          key: feed-${{ github.run_id }}
+          restore-keys: |
+            feed-
+
       - name: Ingest
-        if: github.event_name != 'push'
         env:
           GUARDIAN_KEY: ${{ secrets.GUARDIAN_KEY }}
           FRED_KEY: ${{ secrets.FRED_KEY }}
           NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}
         run: npm run ingest
 
-      - name: Commit refreshed feed
-        if: github.event_name != 'push'
-        run: |
-          git config user.name "nietok-bot"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add public/data/feed.json
-
-          if git diff --staged --quiet; then
-            echo "feed unchanged — nothing to commit"
-            exit 0
-          fi
-
-          git commit -m "chore(feed): refresh $(date -u +%Y-%m-%dT%H:%MZ)"
-
-          # Rebase-and-retry. Even with a concurrency group, a manual run can
-          # land alongside the cron; losing the commit silently would drift the
-          # deployed feed from the repo, so this retries rather than ignoring it.
-          for attempt in 1 2 3; do
-            if git push; then
-              echo "pushed on attempt $attempt"
-              exit 0
-            fi
-            echo "push rejected — rebasing onto origin/main (attempt $attempt)"
-            git pull --rebase origin main
-          done
-
-          echo "::error::could not push the refreshed feed after 3 attempts"
-          exit 1
+      - name: Save feed for the next run
+        uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: public/data
+          key: feed-${{ github.run_id }}
 
       - run: npm run build
 

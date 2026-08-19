@@ -34,12 +34,28 @@ anything committed is world-readable. In CI the keys come from GitHub Secrets.
 
 ```
 scripts/ingest/index.js
-  fetch (parallel, failure-isolated) → normalize → dedupe → rank → quota → write
-       ↓
-public/data/feed.json
+  fetch (parallel, failure-isolated)
+    → normalize → dedupe → rank → quota → crosslink → write
+       ↓                    ↓
+  feed.json (481 KB)   details.json (1877 KB)
+  card faces only      text, timelines, facts
+       ↓                    ↓
+  blocks first paint   loaded in background
        ↓
 src/main.js → src/feed.js → src/card/render.js + src/detail.js
 ```
+
+**The payload is split** because everything used to load before the first card
+appeared. Faces are 136 KB gzipped; the long text, timelines and fact panels are
+another 487 KB that nothing needs until you tap something, so they load after
+first paint (`src/details.js`). Tapping before that lands opens the overlay from
+the face and fills in when it arrives — no spinner, no per-tap request.
+
+**`public/data/` is not in git.** It is regenerated every CI run and carried
+between runs by the Actions cache. Committing ~2.3 MB every three hours would
+add roughly a gigabyte of history a year for content that is rebuilt anyway —
+and the commit-and-push was itself what made concurrent runs race each other.
+Run `npm run ingest` after cloning.
 
 **Sources** (`scripts/ingest/sources/`) each return `{ cards }` and are
 independently key-gated. One being down logs a warning and contributes zero
@@ -67,6 +83,22 @@ fixed card height would drift.
 a scroll. The feed sits underneath untouched, so scroll position cannot be
 lost. Swipe down to dismiss — but only when the inner content is already at the
 top, otherwise it would hijack normal reading scroll.
+
+## Historical context
+
+History cards carry four kinds of context, all deterministic — no LLM involved.
+
+| Section | Source | Coverage |
+|---|---|---|
+| **Also on this day** — same calendar date across years, as a timeline | Already in the feed; costs nothing | 387/387 |
+| **Part of / sequence** — the event's place in a chain (battle → campaign → war) | Wikidata `P361`/`P155`/`P156` | 207/387 |
+| **Facts** — participants, location, casualties | Wikidata `P710`/`P276`/`P17`/`P1120` | 282/387 |
+| **In today's feed** — current stories sharing its topics | Topic overlap with news cards | 291/387 |
+
+The Wikidata pass resolves labels in two batched phases — claims for every
+requested id, then one deduplicated lookup for every id those claims referenced.
+Resolving per card would be thousands of requests; deduplicating across the run
+makes it a few dozen.
 
 ## Status
 

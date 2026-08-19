@@ -1,4 +1,5 @@
 import './styles/app.css'
+import { loadDetails } from './details.js'
 import { createFeed } from './feed.js'
 
 const bootEl = document.getElementById('boot')
@@ -10,7 +11,8 @@ function fail(message) {
 }
 
 async function start() {
-  const url = `${import.meta.env.BASE_URL}data/feed.json`
+  const base = import.meta.env.BASE_URL
+  const url = `${base}data/feed.json`
 
   let payload
   try {
@@ -29,6 +31,10 @@ async function start() {
   }
 
   createFeed(document.getElementById('feed'), cards)
+
+  // Deliberately not awaited — detail text, timelines and fact panels are
+  // several times the size of the card faces and are only needed on tap.
+  loadDetails(base)
 
   bootEl.classList.add('is-hidden')
   setTimeout(() => {

@@ -1,5 +1,5 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
-import { dirname } from 'node:path'
+import { dirname, join } from 'node:path'
 
 import { applyQuota } from './quota.js'
 
@@ -13,6 +13,17 @@ async function readExisting(path) {
     return Array.isArray(parsed?.cards) ? parsed.cards : []
   } catch {
     return []
+  }
+}
+
+/** Details live in a separate file, so read them back to merge alongside. */
+async function readExistingDetails(path) {
+  try {
+    const raw = await readFile(path, 'utf8')
+    const parsed = JSON.parse(raw)
+    return parsed?.details ?? {}
+  } catch {
+    return {}
   }
 }
 
@@ -34,7 +45,6 @@ function merge(existing, incoming) {
     }
     byId.set(card.id, {
       ...card,
-      // Preserve anything a previous run paid for or computed.
       dek: prior.enriched?.dek ? prior.dek : card.dek,
       entities: prior.entities?.length ? prior.entities : card.entities,
       related: prior.related?.length ? prior.related : card.related,
@@ -46,13 +56,37 @@ function merge(existing, incoming) {
   return [...byId.values()]
 }
 
+/**
+ * Everything a card face needs to render. Deliberately small: this file blocks
+ * first paint, so anything only the detail overlay reads belongs in the other
+ * one.
+ */
+function toFace(card) {
+  return {
+    id: card.id,
+    type: card.type,
+    headline: card.headline,
+    dek: card.dek,
+    image: card.image,
+    source: card.source,
+    topics: card.topics,
+    region: card.region,
+    score: card.score,
+    firstSeen: card.firstSeen,
+  }
+}
+
 export async function writeFeed(cards, { path, dryRun = false } = {}) {
-  // A dry run should show what *this* run produced. Merging into a previous
-  // sample makes the counts accumulate and misrepresents the source report.
+  const detailPath = join(dirname(path), dryRun ? 'details.sample.json' : 'details.json')
+
   const existing = dryRun ? [] : await readExisting(path)
+  const existingDetails = dryRun ? {} : await readExistingDetails(detailPath)
   const now = Date.now()
 
-  const stamped = cards.map((card) => ({ ...card, firstSeen: card.firstSeen ?? new Date(now).toISOString() }))
+  const stamped = cards.map((card) => ({
+    ...card,
+    firstSeen: card.firstSeen ?? new Date(now).toISOString(),
+  }))
   let merged = merge(existing, stamped)
 
   const cutoff = now - MAX_AGE_DAYS * 24 * 60 * 60 * 1000
@@ -61,26 +95,39 @@ export async function writeFeed(cards, { path, dryRun = false } = {}) {
     return !Number.isFinite(seen) || seen >= cutoff
   })
 
-  // Quota-capped, not a global score slice — see quota.js for why.
   merged = applyQuota(merged, MAX_CARDS)
 
-  const payload = {
-    generatedAt: new Date(now).toISOString(),
-    count: merged.length,
-    cards: merged,
+  if (!dryRun && merged.length === 0 && existing.length > 0) {
+    throw new Error('refusing to write an empty feed over an existing one')
   }
 
-  const body = JSON.stringify(payload, null, dryRun ? 2 : 0)
-
-  if (!dryRun) {
-    // A run where every source failed must not wipe a good feed.
-    if (merged.length === 0 && existing.length > 0) {
-      throw new Error('refusing to write an empty feed over an existing one')
-    }
+  // Split. A card whose detail this run did not produce keeps the detail a
+  // previous run wrote, so a transient source failure does not blank it.
+  const faces = merged.map(toFace)
+  const details = {}
+  for (const card of merged) {
+    const incoming = card.detail && Object.keys(card.detail).length ? card.detail : null
+    const detail = incoming ?? existingDetails[card.id] ?? null
+    if (detail) details[card.id] = detail
   }
 
   await mkdir(dirname(path), { recursive: true })
-  await writeFile(path, body)
 
-  return { total: merged.length, added: merged.length - existing.length, path }
+  const indent = dryRun ? 2 : 0
+  await writeFile(
+    path,
+    JSON.stringify({ generatedAt: new Date(now).toISOString(), count: faces.length, cards: faces }, null, indent),
+  )
+  await writeFile(
+    detailPath,
+    JSON.stringify({ generatedAt: new Date(now).toISOString(), details }, null, indent),
+  )
+
+  return {
+    total: faces.length,
+    added: faces.length - existing.length,
+    path,
+    detailPath,
+    detailCount: Object.keys(details).length,
+  }
 }

@@ -292,6 +292,178 @@ img {
   border-bottom: 1px solid var(--rule);
 }
 
+/* ---------- context sections ---------- */
+.detail__section {
+  margin: 1.8rem 0;
+  padding-top: 1.2rem;
+  border-top: 1px solid var(--rule);
+}
+
+.detail__sectionTitle {
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  font-weight: 400;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent, var(--accent-history));
+  margin: 0 0 1rem;
+}
+
+.detail__label {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin: 0.9rem 0 0.5rem;
+}
+
+/* Timeline — the rule and dots carry the sense of a sequence. */
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 1.1rem;
+  border-left: 1px solid var(--rule);
+}
+
+.timeline__item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 3.1rem 1fr;
+  gap: 0.7rem;
+  padding: 0.42rem 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.timeline__item::before {
+  content: "";
+  position: absolute;
+  left: -1.42rem;
+  top: 0.82rem;
+  width: 0.38rem;
+  height: 0.38rem;
+  border-radius: 50%;
+  background: var(--rule);
+}
+
+.timeline__item--self {
+  color: var(--paper);
+}
+
+.timeline__item--self::before {
+  background: var(--accent, var(--accent-history));
+  box-shadow: 0 0 0 3px rgba(143, 179, 221, 0.18);
+}
+
+.timeline__year {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: var(--faint);
+  padding-top: 0.12rem;
+}
+
+.timeline__item--self .timeline__year {
+  color: var(--accent, var(--accent-history));
+}
+
+.timeline__text {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Part-of nesting and before/after sequence. */
+.chain {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.chain__item {
+  font-size: 0.94rem;
+  line-height: 1.5;
+  color: var(--muted);
+  padding: 0.2rem 0;
+}
+
+.chain--nested .chain__item {
+  padding-left: calc(var(--depth, 0) * 1rem);
+}
+
+.chain--nested .chain__item + .chain__item {
+  padding-left: 1.1rem;
+}
+
+.chain--nested .chain__item + .chain__item + .chain__item {
+  padding-left: 2.2rem;
+}
+
+.chain__item--before,
+.chain__item--after {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+}
+
+/* Facts */
+.facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.5rem 1rem;
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.facts dt {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--faint);
+  padding-top: 0.2rem;
+}
+
+.facts dd {
+  margin: 0;
+  color: var(--muted);
+}
+
+/* Related news */
+.related {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.9rem;
+}
+
+.related__item {
+  display: grid;
+  gap: 0.22rem;
+}
+
+.related__link {
+  color: var(--paper);
+  font-size: 0.96rem;
+  line-height: 1.4;
+  text-decoration: none;
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 0.4rem;
+}
+
+.related__source {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
 .detail__meta {
   margin: 1.4rem 0;
   padding-top: 1rem;
