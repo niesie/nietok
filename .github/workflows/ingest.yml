@@ -32,7 +32,11 @@ jobs:
 
       - run: npm ci
 
+      # Only refresh the feed on a schedule or a manual run. A code push should
+      # deploy what is already committed — ingesting on every push burns the
+      # Guardian daily quota and is what made two runs race to commit.
       - name: Ingest
+        if: github.event_name != 'push'
         env:
           GUARDIAN_KEY: ${{ secrets.GUARDIAN_KEY }}
           FRED_KEY: ${{ secrets.FRED_KEY }}
@@ -40,18 +44,33 @@ jobs:
         run: npm run ingest
 
       - name: Commit refreshed feed
+        if: github.event_name != 'push'
         run: |
           git config user.name "nietok-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add public/data/feed.json
+
           if git diff --staged --quiet; then
             echo "feed unchanged — nothing to commit"
-          else
-            git commit -m "chore(feed): refresh $(date -u +%Y-%m-%dT%H:%MZ)"
-            # A push failure must fail the run. Silently losing the commit would
-            # mean the deployed feed and the repo drift apart.
-            git push
+            exit 0
           fi
+
+          git commit -m "chore(feed): refresh $(date -u +%Y-%m-%dT%H:%MZ)"
+
+          # Rebase-and-retry. Even with a concurrency group, a manual run can
+          # land alongside the cron; losing the commit silently would drift the
+          # deployed feed from the repo, so this retries rather than ignoring it.
+          for attempt in 1 2 3; do
+            if git push; then
+              echo "pushed on attempt $attempt"
+              exit 0
+            fi
+            echo "push rejected — rebasing onto origin/main (attempt $attempt)"
+            git pull --rebase origin main
+          done
+
+          echo "::error::could not push the refreshed feed after 3 attempts"
+          exit 1
 
       - run: npm run build
 
