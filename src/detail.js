@@ -47,10 +47,21 @@ function build(card) {
   }
 
   const body = el('div', 'detail__body')
-  // Phase 1 has no LLM text, so this is the source's own summary — the longer
-  // extract where we have one, the card dek otherwise.
-  const prose = card.detail?.extract || card.dek
-  if (prose) body.append(el('p', null, prose))
+  const extract = card.detail?.extract?.trim() ?? ''
+
+  // The dek is the standfirst. Only show it when the longer text doesn't
+  // already open with the same words, otherwise the view starts by repeating
+  // itself.
+  const dek = card.dek?.trim() ?? ''
+  if (dek && !extract.startsWith(dek.slice(0, 60))) {
+    body.append(el('p', 'detail__lead', dek))
+  }
+
+  // Phase 1 has no LLM text: this is the source's own prose — the Guardian
+  // article body or the Wikipedia intro.
+  const paragraphs = (extract || dek).split(/\n{2,}|\n/).map((p) => p.trim()).filter(Boolean)
+  for (const paragraph of paragraphs) body.append(el('p', null, paragraph))
+
   scroller.append(body)
 
   const meta = el('div', 'detail__meta')

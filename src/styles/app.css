@@ -283,6 +283,15 @@ img {
   margin: 0 0 1rem;
 }
 
+/* Standfirst — the card's own summary, set apart from the article body. */
+.detail__lead {
+  font-size: 1.12rem !important;
+  line-height: 1.5 !important;
+  color: var(--paper) !important;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--rule);
+}
+
 .detail__meta {
   margin: 1.4rem 0;
   padding-top: 1rem;

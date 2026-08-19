@@ -1,5 +1,6 @@
 import { fetchWithRetry } from '../../lib/http.js'
 import { inferRegion, inferTopics, makeCard, makeId } from '../normalize.js'
+import { enrichWikipediaPages, stripTracking } from './wikipedia-enrich.js'
 
 const FEED = 'https://api.wikimedia.org/feed/v1/wikipedia/en/onthisday/events'
 
@@ -7,19 +8,22 @@ const FEED = 'https://api.wikimedia.org/feed/v1/wikipedia/en/onthisday/events'
 // still returns plenty of sport and culture. Keep what this app is about.
 const RELEVANT = /\b(war|treaty|battle|invas|independen|revolution|coup|election|president|parliament|empire|colon|border|alliance|nato|united nations|soviet|republic|sanction|blockade|siege|accord|summit|constitution|assassinat|uprising|annex|partition|referendum|trade|economic|currency|crisis|depression|market crash|nuclear|missile|army|troops|surrender|armistice|occupation)/i
 
-// Wikimedia thumbnails are URL-resizable via the /NNNpx- path segment. Bumping
-// to 1200px matters because these render full-bleed on a phone.
-function upscaleThumb(url) {
-  return url.replace(/\/(\d+)px-/, (match, width) => (Number(width) < 1200 ? '/1200px-' : match))
-}
-
+/**
+ * Only ever use a URL the API handed us.
+ *
+ * Rewriting the /NNNpx-/ segment to force a bigger thumbnail looks like it
+ * works and mostly does — but on large source files MediaWiki serves only the
+ * sizes it has already rendered and returns 400 for anything else. That silently
+ * broke roughly half the history images. A renderable larger thumbnail comes
+ * from the pageimages API instead (see wikipedia-enrich.js).
+ */
 function pickImage(page) {
   const original = page?.originalimage
-  if (original?.source && Number(original.width ?? 0) <= 2400) {
-    return { url: original.source, credit: 'Wikimedia Commons' }
+  if (original?.source && Number(original.width ?? 0) <= 2000) {
+    return { url: stripTracking(original.source), credit: 'Wikimedia Commons' }
   }
   if (page?.thumbnail?.source) {
-    return { url: upscaleThumb(page.thumbnail.source), credit: 'Wikimedia Commons' }
+    return { url: stripTracking(page.thumbnail.source), credit: 'Wikimedia Commons' }
   }
   return null
 }
@@ -35,6 +39,7 @@ function pad(n) {
  */
 export async function fetchOnThisDay({ days = 14 } = {}) {
   const cards = []
+  const lookups = [] // parallel to `cards` — the title to enrich each one by
   const now = new Date()
 
   for (let offset = 0; offset < days; offset++) {
@@ -85,8 +90,22 @@ export async function fetchOnThisDay({ days = 14 } = {}) {
           },
         }),
       )
+      lookups.push(page.title ?? null)
     }
   }
+
+  // One batched pass for a renderable image and the full intro text. Failures
+  // here leave the feed's own thumbnail and short extract in place.
+  const enriched = await enrichWikipediaPages(lookups)
+
+  cards.forEach((card, i) => {
+    const extra = enriched.get(lookups[i])
+    if (!extra) return
+    if (extra.image) card.image = { url: extra.image, credit: 'Wikimedia Commons' }
+    if (extra.extract && extra.extract.length > (card.detail.extract?.length ?? 0)) {
+      card.detail.extract = extra.extract
+    }
+  })
 
   return { cards }
 }

@@ -36,6 +36,26 @@ function pickImage(result) {
   return null
 }
 
+// Enough for the detail view to be worth opening, without the full body of 120
+// articles bloating the payload every phone downloads on load.
+const EXCERPT_CHARS = 1400
+
+/** Trim to a paragraph break where possible, a sentence otherwise. */
+function excerpt(bodyText = '') {
+  const clean = bodyText.replace(/\r/g, '').trim()
+  if (!clean) return ''
+  if (clean.length <= EXCERPT_CHARS) return clean
+
+  const window = clean.slice(0, EXCERPT_CHARS)
+  const paragraph = window.lastIndexOf('\n\n')
+  if (paragraph > EXCERPT_CHARS * 0.5) return `${window.slice(0, paragraph).trim()}…`
+
+  const sentence = Math.max(window.lastIndexOf('. '), window.lastIndexOf('." '))
+  if (sentence > EXCERPT_CHARS * 0.5) return `${window.slice(0, sentence + 1).trim()}…`
+
+  return `${window.trim()}…`
+}
+
 export async function fetchGuardian({ pageSize = 40 } = {}) {
   const key = process.env.GUARDIAN_KEY
   if (!key) {
@@ -50,7 +70,7 @@ export async function fetchGuardian({ pageSize = 40 } = {}) {
       section,
       'page-size': pageSize,
       'order-by': 'newest',
-      'show-fields': 'trailText,thumbnail,byline,headline',
+      'show-fields': 'trailText,thumbnail,byline,headline,bodyText',
       'show-elements': 'image',
     })
 
@@ -86,6 +106,7 @@ export async function fetchGuardian({ pageSize = 40 } = {}) {
           detail: {
             section: result.sectionName ?? section,
             byline: result.fields?.byline ?? null,
+            extract: excerpt(result.fields?.bodyText ?? ''),
           },
         }),
       )
