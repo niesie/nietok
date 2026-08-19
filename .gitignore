@@ -1,0 +1,19 @@
+# Secrets — never commit. This repo is public.
+.env
+.env.local
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Ingest scratch
+.cache/
+public/data/feed.sample.json
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

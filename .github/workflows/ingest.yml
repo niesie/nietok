@@ -1,0 +1,70 @@
+name: ingest & deploy
+
+on:
+  schedule:
+    # Every 3 hours. GitHub queues rather than guarantees this time.
+    - cron: '0 */3 * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write # committing the refreshed feed
+  pages: write
+  id-token: write
+
+# A manual run overlapping the cron would double-fetch and, once the Phase 4
+# budget ledger exists, read the same ledger twice and double-spend.
+concurrency:
+  group: ingest
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Ingest
+        env:
+          GUARDIAN_KEY: ${{ secrets.GUARDIAN_KEY }}
+          FRED_KEY: ${{ secrets.FRED_KEY }}
+          NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}
+        run: npm run ingest
+
+      - name: Commit refreshed feed
+        run: |
+          git config user.name "nietok-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/data/feed.json
+          if git diff --staged --quiet; then
+            echo "feed unchanged — nothing to commit"
+          else
+            git commit -m "chore(feed): refresh $(date -u +%Y-%m-%dT%H:%MZ)"
+            # A push failure must fail the run. Silently losing the commit would
+            # mean the deployed feed and the repo drift apart.
+            git push
+          fi
+
+      - run: npm run build
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

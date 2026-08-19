@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+    <title>Nietok</title>
+    <meta name="description" content="A feed for geopolitics, economics and history." />
+
+    <meta name="theme-color" content="#0a0a0b" />
+    <meta name="color-scheme" content="dark" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+
+    <!-- iOS standalone launch: this is what removes the browser chrome after
+         Add to Home Screen. Android reads the manifest instead. -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Nietok" />
+    <link rel="apple-touch-icon" href="./icons/icon-180.png" />
+    <link rel="icon" href="./icons/icon.svg" type="image/svg+xml" />
+  </head>
+  <body>
+    <main id="feed" class="feed" aria-label="Feed"></main>
+
+    <div id="detail" class="detail" hidden aria-modal="true" role="dialog" aria-label="Card detail">
+      <div class="detail__grabber" aria-hidden="true"></div>
+      <div class="detail__scroll" id="detail-scroll"></div>
+    </div>
+
+    <div id="boot" class="boot">
+      <div class="boot__mark">NIETOK</div>
+      <div class="boot__status" id="boot-status">loading feed…</div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
