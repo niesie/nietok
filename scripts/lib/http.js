@@ -10,7 +10,9 @@ const HOST_INTERVAL_MS = {
   'api.wikimedia.org': 200,
   'en.wikipedia.org': 200,
   'query.wikidata.org': 1000,
-  'api.gdeltproject.org': 1500,
+  // GDELT throttles hard — at 6s spacing four of six queries still came back
+  // 429. Pacing is cheaper than burning four retry cycles per query.
+  'api.gdeltproject.org': 12_000,
   default: 100,
 }
 

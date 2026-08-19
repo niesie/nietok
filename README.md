@@ -72,6 +72,11 @@ and the app silently stops being a news reader.
 / 20% econ / 25% history, freshness-weighted, never three of one type in a row,
 seen cards pushed down rather than removed so it loops instead of dead-ending.
 
+Each bucket's draw weight is also capped at `poolSize / REPEAT_HORIZON`, because
+the target mix will happily overdraw a thin bucket: 16 economic cards asked to
+fill 20% of the feed cycle every 80 cards. That cap moved the first repeat from
+card 73 back to 219, and lifts on its own as a bucket grows.
+
 **`src/feed.js`** mounts cards and keeps a live `<img>` src only for the cards
 near the viewport. DOM nodes are cheap; decoded images are what exhausts a
 phone. Past ~260 mounted cards it prunes from the top and corrects `scrollTop`
@@ -83,6 +88,26 @@ fixed card height would drift.
 a scroll. The feed sits underneath untouched, so scroll position cannot be
 lost. Swipe down to dismiss — but only when the inner content is already at the
 top, otherwise it would hijack normal reading scroll.
+
+## Sources
+
+| Source | Key | Contributes |
+|---|---|---|
+| **Guardian** Open Platform | ✅ | 120 cards. World, politics, business, with body-text excerpts. |
+| **RSS** — 13 outlets | — | ~280 cards. Politico EU, DW, France 24 (Europe); Al Jazeera, Arab News (Middle East); SCMP, The Diplomat, Times of India (Asia); Africanews, AllAfrica (Africa); MercoPress, Buenos Aires Herald (Latin America); The Moscow Times. |
+| **Wikipedia** on this day | — | ~390 history cards over a rolling 14-day window. |
+| **Wikidata** | — | Structured chain and facts for history cards. |
+| **FRED** St. Louis Fed | ✅ | 19 series → ~16 cards. Inflation, rates, growth, energy, trade, markets. |
+
+The outlet spread is the point, not the card count. A geopolitics feed sourced
+from one British newspaper filters every story through one editorial lens;
+Guardian is now 30% of news rather than 100%.
+
+**GDELT is implemented but not registered** (`sources/gdelt.js`). It returns no
+description field, so every card face would be missing one of the three things
+it shows, and four of six country queries returned 429 even at 12s spacing,
+adding ~4 minutes per run. Named RSS feeds cover the same regions with
+summaries and images. The file documents how to re-enable it.
 
 ## Historical context
 

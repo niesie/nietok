@@ -8,6 +8,19 @@ const BUCKETS = [
 
 const MAX_RUN = 2 // never three cards from the same bucket in a row
 
+/**
+ * How far you should be able to scroll before anything repeats.
+ *
+ * A bucket holding N cards can supply at most N/HORIZON of the feed without
+ * cycling inside that window, so its draw weight is capped there. Without this
+ * the target mix silently overdraws a thin bucket: 16 economic cards asked to
+ * fill 20% of the feed repeat every 80 cards, which dragged the first repeat
+ * from card 212 down to card 73 the moment econ cards were added.
+ *
+ * The cap lifts on its own as a bucket grows.
+ */
+const REPEAT_HORIZON = 400
+
 function bucketOf(card) {
   return BUCKETS.find((b) => b.types.includes(card.type))?.name ?? 'news'
 }
@@ -48,7 +61,13 @@ export function createPlaylist(cards) {
     queues[bucket.name] = weightedOrder(pools[bucket.name])
   }
 
-  const active = BUCKETS.filter((b) => pools[b.name].length > 0)
+  // Cap each bucket's draw weight by what it can actually supply, then let the
+  // others absorb the slack via the proportional pick below.
+  const active = BUCKETS.filter((b) => pools[b.name].length > 0).map((bucket) => ({
+    ...bucket,
+    weight: Math.min(bucket.weight, pools[bucket.name].length / REPEAT_HORIZON),
+  }))
+
   let lastBucket = null
   let runLength = 0
   let lastId = null
