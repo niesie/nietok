@@ -63,11 +63,11 @@ export const SERIES = [
   { id: 'LRHUTTTTCAM156S', peerGroup: 'Unemployment rate', country: 'Canada', label: 'Canadian unemployment', format: 'percent', type: 'econ', topics: ['economy', 'americas'] },
 
   // ---- Energy: the most geopolitical numbers here ----
-  { id: 'DCOILBRENTEU', label: 'Brent crude', format: 'usd', unit: '/bbl', type: 'econ', topics: ['energy'] },
-  { id: 'DCOILWTICO', label: 'WTI crude', format: 'usd', unit: '/bbl', type: 'econ', topics: ['energy', 'americas'] },
-  { id: 'DHHNGSP', label: 'US natural gas (Henry Hub)', format: 'usd', unit: '/MMBtu', type: 'econ', topics: ['energy', 'americas'] },
-  { id: 'PNGASEUUSDM', label: 'European natural gas', format: 'usd', unit: '/MMBtu', type: 'econ', topics: ['energy', 'eu'] },
-  { id: 'PNGASJPUSDM', label: 'Asian LNG', format: 'usd', unit: '/MMBtu', type: 'econ', topics: ['energy', 'asia'] },
+  { id: 'DCOILBRENTEU', peerGroup: 'Crude oil benchmark', country: 'Brent (Europe)', label: 'Brent crude', format: 'usd', unit: '/bbl', type: 'econ', topics: ['energy'] },
+  { id: 'DCOILWTICO', peerGroup: 'Crude oil benchmark', country: 'WTI (US)', label: 'WTI crude', format: 'usd', unit: '/bbl', type: 'econ', topics: ['energy', 'americas'] },
+  { id: 'DHHNGSP', peerGroup: 'Natural gas price by region', country: 'United States', label: 'US natural gas (Henry Hub)', format: 'usd', unit: '/MMBtu', type: 'econ', topics: ['energy', 'americas'] },
+  { id: 'PNGASEUUSDM', peerGroup: 'Natural gas price by region', country: 'Europe', label: 'European natural gas', format: 'usd', unit: '/MMBtu', type: 'econ', topics: ['energy', 'eu'] },
+  { id: 'PNGASJPUSDM', peerGroup: 'Natural gas price by region', country: 'Asia (LNG)', label: 'Asian LNG', format: 'usd', unit: '/MMBtu', type: 'econ', topics: ['energy', 'asia'] },
   { id: 'PCOALAUUSDM', label: 'Australian coal', format: 'usdWhole', unit: '/t', type: 'econ', topics: ['energy', 'asia'] },
   { id: 'PNRGINDEXM', label: 'Global energy price index', format: 'index', type: 'econ', topics: ['energy'] },
 
@@ -86,16 +86,16 @@ export const SERIES = [
   // ---- Trade flows ----
   { id: 'BOPGSTB', label: 'US trade balance', format: 'usdBillions', type: 'trade', topics: ['trade', 'americas'] },
   { id: 'NETEXP', label: 'US net exports', format: 'usdBillions', type: 'trade', topics: ['trade', 'americas'] },
-  { id: 'IMPCH', label: 'US imports from China', format: 'usdMillions', type: 'trade', topics: ['trade', 'china'] },
-  { id: 'EXPCH', label: 'US exports to China', format: 'usdMillions', type: 'trade', topics: ['trade', 'china'] },
-  { id: 'IMPMX', label: 'US imports from Mexico', format: 'usdMillions', type: 'trade', topics: ['trade', 'americas'] },
-  { id: 'EXPMX', label: 'US exports to Mexico', format: 'usdMillions', type: 'trade', topics: ['trade', 'americas'] },
-  { id: 'IMPCA', label: 'US imports from Canada', format: 'usdMillions', type: 'trade', topics: ['trade', 'americas'] },
-  { id: 'EXPCA', label: 'US exports to Canada', format: 'usdMillions', type: 'trade', topics: ['trade', 'americas'] },
-  { id: 'IMPJP', label: 'US imports from Japan', format: 'usdMillions', type: 'trade', topics: ['trade', 'asia'] },
-  { id: 'EXPJP', label: 'US exports to Japan', format: 'usdMillions', type: 'trade', topics: ['trade', 'asia'] },
-  { id: 'IMPGE', label: 'US imports from Germany', format: 'usdMillions', type: 'trade', topics: ['trade', 'eu'] },
-  { id: 'EXPGE', label: 'US exports to Germany', format: 'usdMillions', type: 'trade', topics: ['trade', 'eu'] },
+  { id: 'IMPCH', peerGroup: 'US goods imports by partner', country: 'China', label: 'US imports from China', format: 'usdMillions', type: 'trade', topics: ['trade', 'china'] },
+  { id: 'EXPCH', peerGroup: 'US goods exports by partner', country: 'China', label: 'US exports to China', format: 'usdMillions', type: 'trade', topics: ['trade', 'china'] },
+  { id: 'IMPMX', peerGroup: 'US goods imports by partner', country: 'Mexico', label: 'US imports from Mexico', format: 'usdMillions', type: 'trade', topics: ['trade', 'americas'] },
+  { id: 'EXPMX', peerGroup: 'US goods exports by partner', country: 'Mexico', label: 'US exports to Mexico', format: 'usdMillions', type: 'trade', topics: ['trade', 'americas'] },
+  { id: 'IMPCA', peerGroup: 'US goods imports by partner', country: 'Canada', label: 'US imports from Canada', format: 'usdMillions', type: 'trade', topics: ['trade', 'americas'] },
+  { id: 'EXPCA', peerGroup: 'US goods exports by partner', country: 'Canada', label: 'US exports to Canada', format: 'usdMillions', type: 'trade', topics: ['trade', 'americas'] },
+  { id: 'IMPJP', peerGroup: 'US goods imports by partner', country: 'Japan', label: 'US imports from Japan', format: 'usdMillions', type: 'trade', topics: ['trade', 'asia'] },
+  { id: 'EXPJP', peerGroup: 'US goods exports by partner', country: 'Japan', label: 'US exports to Japan', format: 'usdMillions', type: 'trade', topics: ['trade', 'asia'] },
+  { id: 'IMPGE', peerGroup: 'US goods imports by partner', country: 'Germany', label: 'US imports from Germany', format: 'usdMillions', type: 'trade', topics: ['trade', 'eu'] },
+  { id: 'EXPGE', peerGroup: 'US goods exports by partner', country: 'Germany', label: 'US exports to Germany', format: 'usdMillions', type: 'trade', topics: ['trade', 'eu'] },
 
   // ---- Uncertainty indices ----
   { id: 'GEPUCURRENT', label: 'Global economic policy uncertainty', format: 'index', type: 'econ', topics: ['economy'] },
