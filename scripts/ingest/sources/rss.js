@@ -3,6 +3,7 @@ import { XMLParser } from 'fast-xml-parser'
 import { fetchWithRetry } from '../../lib/http.js'
 import { canonicalUrl, inferRegion, inferTopics, makeCard, makeId, stripHtml } from '../normalize.js'
 import { isUsable } from '../quality.js'
+import { trimToSentence } from '../text.js'
 
 /**
  * Named outlets, chosen for the perspectives the Guardian alone cannot give:
@@ -113,21 +114,6 @@ function dateOf(item) {
     textOf(item.pubDate) || textOf(item.published) || textOf(item.updated) || textOf(item['dc:date'])
   const parsed = Date.parse(raw)
   return Number.isFinite(parsed) ? new Date(parsed).toISOString() : new Date().toISOString()
-}
-
-/**
- * Trim to a sentence boundary.
- *
- * A hard character slice cut headlines mid-word — "the minister said the
- * agreement would" — which reads as a bug rather than a summary.
- */
-function trimToSentence(text, max) {
-  if (text.length <= max) return text
-  const window = text.slice(0, max)
-  const sentence = Math.max(window.lastIndexOf('. '), window.lastIndexOf('! '), window.lastIndexOf('? '))
-  if (sentence > max * 0.4) return window.slice(0, sentence + 1).trim()
-  const word = window.lastIndexOf(' ')
-  return `${window.slice(0, word > 0 ? word : max).trim()}…`
 }
 
 async function fetchFeed(feed) {

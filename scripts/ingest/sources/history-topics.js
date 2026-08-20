@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { HISTORY_TOPICS } from '../../../content/history-topics.js'
 import { inferRegion, inferTopics, makeCard, makeId } from '../normalize.js'
 import { rotatingSlice, rotationSignature } from '../rotate.js'
+import { opening, trimToSentence } from '../text.js'
 import { enrichWikipediaPages } from './wikipedia-enrich.js'
 
 // Encyclopedia articles do not change hourly, and there are ~140 of them.
@@ -18,7 +19,7 @@ const PHASE_OFFSET = 3
 const MIN_EXTRACT = 260
 
 // Enough to be worth reading, not so much that the overlay becomes an essay.
-const MAX_EXTRACT = 1200
+const MAX_EXTRACT = 2600
 
 /**
  * Strip the apparatus Wikipedia opens articles with.
@@ -46,13 +47,6 @@ function cleanExtract(text) {
     .trim()
 }
 
-/** Trim to a sentence so a card never ends mid-thought. */
-function trimToSentence(text, max) {
-  if (text.length <= max) return text
-  const window = text.slice(0, max)
-  const cut = Math.max(window.lastIndexOf('. '), window.lastIndexOf('! '), window.lastIndexOf('? '))
-  return cut > max * 0.4 ? window.slice(0, cut + 1).trim() : `${window.trim()}…`
-}
 
 const SPREAD_DAYS = 14
 
@@ -64,18 +58,15 @@ function spreadDate(title) {
   return new Date(Date.now() - hoursBack * 3_600_000).toISOString()
 }
 
-/** The first sentence or two — what goes on the card face. */
-function opening(extract) {
-  const trimmed = trimToSentence(extract, 260)
-  return trimmed
-}
 
 export async function fetchHistoryTopics({ dataDir = join(process.cwd(), 'public', 'data') } = {}) {
   const statePath = join(dataDir, 'history-topics.json')
 
   // Reuse only a slice computed by this code, this pool and this day.
   const signature = rotationSignature({
-    shape: 'topic-v2',
+    // Bump when anything about the produced cards changes — extract length,
+    // cleaning, card shape. The pool size and slice are covered separately.
+    shape: 'topic-v3',
     poolSize: HISTORY_TOPICS.length,
     slice: DAILY_SLICE,
   })

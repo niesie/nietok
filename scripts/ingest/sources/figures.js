@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { FIGURES } from '../../../content/figures.js'
 import { inferRegion, inferTopics, makeCard, makeId } from '../normalize.js'
 import { rotatingSlice, rotationSignature } from '../rotate.js'
+import { trimToSentence } from '../text.js'
 import { enrichWikipediaPages } from './wikipedia-enrich.js'
 
 const REFRESH_AFTER_HOURS = 20
@@ -18,7 +19,7 @@ const MIN_EXTRACT = 300
 
 // The LLM writes from this, so it has to carry enough to write from — but a
 // whole biography would cost more per card than the story is worth.
-const MAX_EXTRACT = 1800
+const MAX_EXTRACT = 2600
 
 const SPREAD_DAYS = 21
 
@@ -48,19 +49,14 @@ function cleanExtract(text) {
     .trim()
 }
 
-function trimToSentence(text, max) {
-  if (text.length <= max) return text
-  const window = text.slice(0, max)
-  const cut = Math.max(window.lastIndexOf('. '), window.lastIndexOf('! '), window.lastIndexOf('? '))
-  return cut > max * 0.4 ? window.slice(0, cut + 1).trim() : `${window.trim()}…`
-}
-
 export async function fetchFigures({ dataDir = join(process.cwd(), 'public', 'data') } = {}) {
   const statePath = join(dataDir, 'figures.json')
 
   // Reuse only a slice computed by this code, this pool and this day.
   const signature = rotationSignature({
-    shape: 'figure-v2',
+    // Bump when anything about the produced cards changes — extract length,
+    // cleaning, card shape. The pool size and slice are covered separately.
+    shape: 'figure-v3',
     poolSize: FIGURES.length,
     slice: DAILY_SLICE,
   })
