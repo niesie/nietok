@@ -1,7 +1,7 @@
 import { seenSet } from './state.js'
 
 const BUCKETS = [
-  { name: 'news', types: ['news', 'company'], weight: 0.55 },
+  { name: 'news', types: ['news', 'company', 'attention'], weight: 0.55 },
   { name: 'econ', types: ['econ', 'markets', 'trade'], weight: 0.2 },
   { name: 'history', types: ['history'], weight: 0.25 },
 ]

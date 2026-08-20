@@ -8,7 +8,7 @@
  * history and the feed silently stops being a news app.
  */
 const BUCKETS = [
-  { name: 'news', types: ['news', 'company'], share: 0.55 },
+  { name: 'news', types: ['news', 'company', 'attention'], share: 0.55 },
   { name: 'econ', types: ['econ', 'markets', 'trade'], share: 0.2 },
   { name: 'history', types: ['history'], share: 0.25 },
 ]

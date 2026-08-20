@@ -4,10 +4,12 @@ import { parseArgs } from 'node:util'
 
 import { linkHistoryToNews, linkNewsToNews, linkSameDay } from './crosslink.js'
 import { dedupe } from './dedupe.js'
+import { tagGeography } from './geo.js'
 import { persistLedger, runEnrichment, submitNextBatch } from './enrich/index.js'
 import { applyQuota } from './quota.js'
 import { rank } from './rank.js'
 import { writeFeed } from './write.js'
+import { fetchAttention } from './sources/attention.js'
 import { fetchFred } from './sources/fred.js'
 import { fetchGdelt } from './sources/gdelt.js'
 import { fetchGuardian } from './sources/guardian.js'
@@ -36,6 +38,7 @@ const SOURCES = [
   { name: 'rss', run: fetchRss },
   { name: 'wikimedia:onthisday', run: fetchOnThisDay },
   { name: 'fred', run: fetchFred },
+  { name: 'attention', run: fetchAttention },
   // GDELT is deliberately not registered — see sources/gdelt.js for why.
   // Re-add `{ name: 'gdelt', run: fetchGdelt }` to turn it back on.
 ]
@@ -72,6 +75,11 @@ async function main() {
 
   // Cross-linking runs after ranking so history-to-news picks the strongest
   // current stories, and after the limit so a sample links within itself.
+  const dataDir = join(process.cwd(), 'public', 'data')
+
+  const geo = await tagGeography(finalCards, dataDir)
+  console.log(`geography: ${geo.tagged} of ${finalCards.length} cards placed on the map`)
+
   linkSameDay(finalCards)
   linkHistoryToNews(finalCards)
   linkNewsToNews(finalCards)
@@ -95,7 +103,6 @@ async function main() {
   // ---- LLM enrichment (Phase 4) ----
   // Runs after ranking so only cards worth seeing are ever candidates, and
   // reads the previous details so a card is never paid for twice.
-  const dataDir = join(process.cwd(), 'public', 'data')
   let existingDetails = {}
   try {
     const raw = await readFile(join(dataDir, DRY_RUN ? 'details.sample.json' : 'details.json'), 'utf8')

@@ -8,6 +8,8 @@ const HALF_LIFE_HOURS = {
   markets: 24,
   trade: 96,
   history: 24 * 10,
+  // Refreshed daily, and a spike is only interesting while it is happening.
+  attention: 30,
   default: 48,
 }
 

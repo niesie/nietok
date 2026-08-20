@@ -1,3 +1,4 @@
+import { renderMap } from './card/map.js'
 import { historyDate, relativeTime } from './card/render.js'
 import { awaitDetail, detailsReady, getDetail } from './details.js'
 
@@ -150,6 +151,29 @@ function renderParallel(detail) {
 
   wrap.append(box)
   return wrap
+}
+
+/**
+ * Where this is happening.
+ *
+ * A geopolitics app with no geography was a real gap — "Bab-el-Mandeb" means
+ * nothing to most readers without seeing it. Rendered asynchronously and
+ * appended in place, so the overlay opens immediately and the map arrives when
+ * the world file has loaded.
+ */
+function renderGeo(detail, scroller) {
+  if (!detail.geo?.iso) return
+  const wrap = section('Where')
+  const holder = el('div', 'map__holder')
+  wrap.append(holder, el('div', 'map__caption', detail.geo.name))
+  scroller.append(wrap)
+
+  renderMap(detail.geo.iso)
+    .then((result) => {
+      if (result) holder.append(result.svg)
+      else wrap.remove()
+    })
+    .catch(() => wrap.remove())
 }
 
 /**
@@ -306,6 +330,8 @@ function build(card, detail) {
   ]) {
     if (node) scroller.append(node)
   }
+
+  renderGeo(d, scroller)
 
   const meta = el('div', 'detail__meta')
   if (card.type === 'history' && d.year) {

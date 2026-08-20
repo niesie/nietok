@@ -5,6 +5,7 @@ const TYPE_LABEL = {
   markets: 'Markets',
   trade: 'Trade',
   history: 'History',
+  attention: 'Attention',
 }
 
 const MONTHS = [

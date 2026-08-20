@@ -48,6 +48,16 @@ jobs:
           restore-keys: |
             feed-
 
+      # Natural Earth country outlines. Built only when the cache did not carry
+      # it — the source is a 700KB download and the geometry never changes.
+      - name: Build world map if missing
+        run: |
+          if [ -f public/data/world.json ]; then
+            echo "world.json restored from cache"
+          else
+            npm run build:world
+          fi
+
       - name: Ingest
         env:
           GUARDIAN_KEY: ${{ secrets.GUARDIAN_KEY }}

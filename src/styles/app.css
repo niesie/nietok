@@ -12,6 +12,9 @@
   --accent-markets: #7cc79a;
   --accent-trade: #7cc79a;
   --accent-history: #8fb3dd;
+  /* Attention cards measure something different from every other card:
+     what people looked up, not what an editor published. */
+  --accent-attention: #d98fb3;
 
   --serif: ui-serif, Georgia, "Iowan Old Style", "Times New Roman", Times, serif;
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
@@ -482,6 +485,46 @@ img {
 .facts dd {
   margin: 0;
   color: var(--muted);
+}
+
+/* ---------- locator map ---------- */
+.map__holder {
+  border: 1px solid var(--rule);
+  border-radius: 0.4rem;
+  overflow: hidden;
+  background: #0e0e11;
+  aspect-ratio: 2 / 1;
+}
+
+.map {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Everything that is not the subject: present for recognition, quiet enough
+   not to compete with it. */
+.map__context path {
+  fill: #23232a;
+  stroke: #0e0e11;
+  stroke-width: 0.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.map__subject {
+  fill: var(--accent, var(--accent-news));
+  stroke: var(--paper);
+  stroke-width: 0.7;
+  vector-effect: non-scaling-stroke;
+}
+
+.map__caption {
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: 0.55rem;
 }
 
 /* Cross-country comparison */
