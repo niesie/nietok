@@ -3,7 +3,7 @@ import { join } from 'node:path'
 
 import { HISTORY_TOPICS } from '../../../content/history-topics.js'
 import { inferRegion, inferTopics, makeCard, makeId } from '../normalize.js'
-import { rotatingSlice } from '../rotate.js'
+import { rotatingSlice, rotationSignature } from '../rotate.js'
 import { enrichWikipediaPages } from './wikipedia-enrich.js'
 
 // Encyclopedia articles do not change hourly, and there are ~140 of them.
@@ -73,11 +73,17 @@ function opening(extract) {
 export async function fetchHistoryTopics({ dataDir = join(process.cwd(), 'public', 'data') } = {}) {
   const statePath = join(dataDir, 'history-topics.json')
 
+  // Reuse only a slice computed by this code, this pool and this day.
+  const signature = rotationSignature({
+    shape: 'topic-v2',
+    poolSize: HISTORY_TOPICS.length,
+    slice: DAILY_SLICE,
+  })
+
   try {
     const state = JSON.parse(await readFile(statePath, 'utf8'))
-    const ageHours = (Date.now() - Date.parse(state.fetchedAt)) / 3_600_000
-    if (ageHours < REFRESH_AFTER_HOURS && Array.isArray(state.cards) && state.cards.length) {
-      return { cards: state.cards, skipped: `reused, ${Math.round(ageHours)}h old` }
+    if (state.signature === signature && Array.isArray(state.cards) && state.cards.length) {
+      return { cards: state.cards, skipped: 'reused, same slice' }
     }
   } catch {
     // No state — fetch.
@@ -140,7 +146,10 @@ export async function fetchHistoryTopics({ dataDir = join(process.cwd(), 'public
   }
 
   try {
-    await writeFile(statePath, JSON.stringify({ fetchedAt: new Date().toISOString(), cards }))
+    await writeFile(
+      statePath,
+      JSON.stringify({ signature, fetchedAt: new Date().toISOString(), cards }),
+    )
   } catch {
     // Losing the cache costs a re-fetch, not correctness.
   }

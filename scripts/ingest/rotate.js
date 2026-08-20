@@ -24,6 +24,22 @@ export function dayNumber(now = new Date()) {
  * @param {number} [offsetSeed] shifts one pool's phase against another's, so
  *                              topics and figures do not both restart together
  */
+/**
+ * Cache signature for a rotating source.
+ *
+ * A plain age timer is not enough. The cached slice was computed by a specific
+ * pool, a specific slice size and a specific day — change any of them and the
+ * stored cards are wrong, but a 20-hour timer happily serves them anyway. That
+ * is how the first rotation deploy shipped and changed nothing: CI reused a
+ * state file written before rotation existed.
+ *
+ * Including the day number also means the cache expires exactly when the slice
+ * does, which is what a rotating source actually wants.
+ */
+export function rotationSignature({ shape, poolSize, slice, now = new Date() }) {
+  return `${shape}:${poolSize}:${slice}:${dayNumber(now)}`
+}
+
 export function rotatingSlice(items, slice, offsetSeed = 0, now = new Date()) {
   if (items.length <= slice) return items
 
