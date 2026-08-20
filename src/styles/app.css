@@ -148,10 +148,19 @@ img {
 .card--econ .headline,
 .card--markets .headline,
 .card--trade .headline {
-  font-size: clamp(3rem, 15vw, 5.5rem);
+  font-size: clamp(2.6rem, 13vw, 4.6rem);
   line-height: 1;
   letter-spacing: -0.03em;
   -webkit-line-clamp: 2;
+}
+
+/* These cards carry an explanation rather than a standfirst, and no photograph
+   competing for the space — three lines cut it mid-sentence. */
+.card--econ .dek,
+.card--markets .dek,
+.card--trade .dek {
+  -webkit-line-clamp: 7;
+  font-size: clamp(0.9rem, 3.4vw, 1rem);
 }
 
 .card__scrim {
@@ -226,6 +235,39 @@ img {
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* Neighbouring readings on an economic card face. */
+.related-strip {
+  display: flex;
+  gap: 1.4rem;
+  flex-wrap: wrap;
+  margin-top: 0.3rem;
+}
+
+.related-strip__item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.related-strip__label {
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 9rem;
+}
+
+.related-strip__value {
+  font-family: var(--mono);
+  font-size: 0.9rem;
+  color: var(--muted);
 }
 
 .card__foot {

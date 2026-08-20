@@ -138,6 +138,19 @@ export function renderCard(card) {
   body.append(kicker, el('h2', 'headline', card.headline))
   if (card.dek) body.append(el('p', 'dek', card.dek))
 
+  // Neighbouring readings, on the face. A lone percentage told the reader
+  // nothing; the same figure beside two related ones is a situation.
+  if (card.related?.length) {
+    const strip = el('div', 'related-strip')
+    for (const item of card.related) {
+      const cell = el('div', 'related-strip__item')
+      cell.append(el('span', 'related-strip__label', item.label))
+      cell.append(el('span', 'related-strip__value', item.value))
+      strip.append(cell)
+    }
+    body.append(strip)
+  }
+
   const foot = el('div', 'card__foot')
   const topics = (card.topics ?? []).slice(0, 3).join(' · ')
   foot.append(el('span', '', topics), el('span', 'card__cue', 'tap for context'))

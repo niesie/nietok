@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 
-import { pruneRetained } from './quality.js'
+import { pruneRetained, pruneSupersededEcon } from './quality.js'
 import { applyQuota } from './quota.js'
 
 const MAX_AGE_DAYS = 45
@@ -80,6 +80,10 @@ function toFace(card) {
   // anything at all, so it has to travel with the face. 64 numbers per card.
   if (card.detail?.spark?.length) face.spark = card.detail.spark
   if (card.label) face.label = card.label
+  // Neighbouring readings belong on the face — a number alone was the whole
+  // complaint, and the answer has to be visible without tapping.
+  if (card.detail?.related?.length) face.related = card.detail.related
+  if (card.geo) face.geo = card.geo
 
   return face
 }
@@ -108,6 +112,11 @@ export async function writeFeed(cards, { path, dryRun = false } = {}) {
   // days while cards ingested under the old rules sit there untouched — which
   // is exactly what happened: the noise filter shipped and the live feed still
   // held 86 celebrity and sport cards from before it existed.
+  // An economic series that has stopped being remarkable must lose its card,
+  // not linger for the retention window.
+  const superseded = pruneSupersededEcon(merged, new Set(stamped.map((c) => c.id)))
+  merged = superseded.kept
+
   const pruned = pruneRetained(merged)
   merged = pruned.kept
 
@@ -147,6 +156,6 @@ export async function writeFeed(cards, { path, dryRun = false } = {}) {
     detailCount: Object.keys(details).length,
     // Surfaced in the run report: dropping several hundred retained cards
     // should be visible, not silent.
-    pruned: pruned.dropped,
+    pruned: { ...pruned.dropped, supersededEcon: superseded.dropped },
   }
 }

@@ -81,6 +81,34 @@ const NEWS_TYPES = new Set(['news', 'company'])
  * Returns the kept cards plus a breakdown, because a silent drop of 400 cards
  * is exactly the kind of thing that should appear in the run report.
  */
+const ECON_TYPES = new Set(['econ', 'markets', 'trade'])
+
+/**
+ * Drop economic cards the current run did not re-emit.
+ *
+ * These are one-card-per-series, updated in place, and a series only becomes a
+ * card while it is doing something unusual. When it stops, the card has to go —
+ * otherwise it sits in the feed for 45 days as exactly the thing the notability
+ * gate exists to prevent: "US high-yield credit spread 2.8%, down 0.1 points",
+ * with no sparkline and no reasoning because it predates both.
+ *
+ * Guarded on the incoming set actually containing economic cards, so a FRED
+ * outage cannot silently delete the entire economics section.
+ */
+export function pruneSupersededEcon(cards, incomingIds) {
+  const incomingEcon = cards.some((c) => ECON_TYPES.has(c.type) && incomingIds.has(c.id))
+  if (!incomingEcon) return { kept: cards, dropped: 0 }
+
+  let dropped = 0
+  const kept = cards.filter((card) => {
+    if (!ECON_TYPES.has(card.type)) return true
+    if (incomingIds.has(card.id)) return true
+    dropped++
+    return false
+  })
+  return { kept, dropped }
+}
+
 export function pruneRetained(cards) {
   const dropped = { noise: 0, offTopic: 0, outletCap: 0 }
 

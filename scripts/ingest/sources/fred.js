@@ -328,6 +328,32 @@ function buildPeerGroups(measured) {
   return groups
 }
 
+/**
+ * Two or three readings that sit next to this one.
+ *
+ * A rate quoted alone is a number; the same rate beside the ten-year yield and
+ * the volatility index is a picture of what credit markets are doing. Drawn
+ * from series that were measured this run, whether or not they earned a card,
+ * and chosen by shared topic so the neighbours are actually related.
+ */
+function buildRelated(config, measured) {
+  const topics = new Set(config.topics ?? [])
+  if (topics.size === 0) return []
+
+  return measured
+    .filter((m) => m.config.id !== config.id)
+    .map((m) => ({
+      m,
+      overlap: (m.config.topics ?? []).filter((t) => topics.has(t)).length,
+    }))
+    // Two shared topics means genuinely adjacent; one would pair inflation with
+    // every other American number in the list.
+    .filter((x) => x.overlap >= 2)
+    .sort((a, b) => b.overlap - a.overlap)
+    .slice(0, 3)
+    .map(({ m }) => ({ label: m.config.label, value: m.display }))
+}
+
 export async function fetchFred() {
   const key = process.env.FRED_KEY
   if (!key) return { cards: [], skipped: 'FRED_KEY not set' }
@@ -408,6 +434,7 @@ export async function fetchFred() {
 
   for (const { config, stats, value, spark, points, notability, raw } of emit) {
     const peers = config.peerGroup ? (peerGroups.get(config.peerGroup) ?? []) : []
+    const related = buildRelated(config, measured)
 
     cards.push(
       makeCard({
@@ -452,6 +479,7 @@ export async function fetchFred() {
           // The same indicator elsewhere, so a national number reads as a
           // position rather than a bare figure.
           peers: peers.length > 1 ? { group: config.peerGroup, entries: peers } : null,
+          related,
         },
       }),
     )
