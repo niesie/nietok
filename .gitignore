@@ -10,6 +10,7 @@ dist/
 
 # Ingest scratch
 .cache/
+.wiki-cache/
 
 # Generated data — regenerated every CI run and carried between runs by the
 # Actions cache, not by git. Committing ~2.3 MB every three hours would add

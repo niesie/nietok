@@ -1,7 +1,11 @@
 import { fetchWithRetry } from '../../lib/http.js'
 import { inferRegion, inferTopics, makeCard, makeId } from '../normalize.js'
 import { fetchWikidataContext } from './wikidata.js'
+import { trimToSentence } from '../text.js'
 import { enrichWikipediaPages, stripTracking } from './wikipedia-enrich.js'
+
+// Matches the evergreen cards, so an anniversary is as readable as a topic.
+const MAX_EXTRACT = 4200
 
 const FEED = 'https://api.wikimedia.org/feed/v1/wikipedia/en/onthisday/events'
 
@@ -105,7 +109,7 @@ export async function fetchOnThisDay({ days = 14 } = {}) {
     if (!extra) return
     if (extra.image) card.image = { url: extra.image, credit: 'Wikimedia Commons' }
     if (extra.extract && extra.extract.length > (card.detail.extract?.length ?? 0)) {
-      card.detail.extract = extra.extract
+      card.detail.extract = trimToSentence(extra.extract, MAX_EXTRACT)
     }
     if (extra.qid) {
       card.detail.qid = extra.qid

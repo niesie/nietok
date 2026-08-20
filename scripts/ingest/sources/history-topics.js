@@ -19,7 +19,7 @@ const PHASE_OFFSET = 3
 const MIN_EXTRACT = 260
 
 // Enough to be worth reading, not so much that the overlay becomes an essay.
-const MAX_EXTRACT = 2600
+const MAX_EXTRACT = 4200
 
 /**
  * Strip the apparatus Wikipedia opens articles with.
@@ -66,7 +66,7 @@ export async function fetchHistoryTopics({ dataDir = join(process.cwd(), 'public
   const signature = rotationSignature({
     // Bump when anything about the produced cards changes — extract length,
     // cleaning, card shape. The pool size and slice are covered separately.
-    shape: 'topic-v3',
+    shape: 'topic-v4',
     poolSize: HISTORY_TOPICS.length,
     slice: DAILY_SLICE,
   })

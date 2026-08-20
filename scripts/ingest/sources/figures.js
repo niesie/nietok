@@ -19,7 +19,7 @@ const MIN_EXTRACT = 300
 
 // The LLM writes from this, so it has to carry enough to write from — but a
 // whole biography would cost more per card than the story is worth.
-const MAX_EXTRACT = 2600
+const MAX_EXTRACT = 4200
 
 const SPREAD_DAYS = 21
 
@@ -56,7 +56,7 @@ export async function fetchFigures({ dataDir = join(process.cwd(), 'public', 'da
   const signature = rotationSignature({
     // Bump when anything about the produced cards changes — extract length,
     // cleaning, card shape. The pool size and slice are covered separately.
-    shape: 'figure-v3',
+    shape: 'figure-v4',
     poolSize: FIGURES.length,
     slice: DAILY_SLICE,
   })
