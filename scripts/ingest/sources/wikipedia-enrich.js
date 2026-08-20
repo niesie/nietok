@@ -26,6 +26,17 @@ const EXTRACT_CONCURRENCY = 3
 const CACHE_DIR = join(process.cwd(), '.wiki-cache')
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000
 
+/**
+ * Bump when the cleaning or paragraphing changes.
+ *
+ * Otherwise a week's worth of text cleaned under the old rules keeps being
+ * served: the run that added the maintenance-template strip still shipped one
+ * "[sic]", because that article's body came from a cache entry written before
+ * the rule existed. This is the same shape as the retention bug that has bitten
+ * five times — a rule changes, and data produced under the old rule survives.
+ */
+const CACHE_VERSION = 2
+
 // Stored generously; each consumer trims to what its card needs.
 const STORE_CHARS = 6000
 
@@ -35,7 +46,8 @@ function cacheKey(title) {
 
 async function readCached(title) {
   try {
-    const { at, extract } = JSON.parse(await readFile(cacheKey(title), 'utf8'))
+    const { at, extract, v } = JSON.parse(await readFile(cacheKey(title), 'utf8'))
+    if (v !== CACHE_VERSION) return null
     return Date.now() - at > CACHE_TTL_MS ? null : extract
   } catch {
     return null
@@ -45,7 +57,7 @@ async function readCached(title) {
 async function writeCached(title, extract) {
   try {
     await mkdir(CACHE_DIR, { recursive: true })
-    await writeFile(cacheKey(title), JSON.stringify({ at: Date.now(), extract }))
+    await writeFile(cacheKey(title), JSON.stringify({ at: Date.now(), extract, v: CACHE_VERSION }))
   } catch {
     // A cache miss next time is the only cost.
   }
@@ -273,7 +285,9 @@ async function fetchBody(title) {
   const page = data?.query?.pages?.[0]
   if (page?.missing || !page?.extract) return null
 
-  const body = cleanBody(page.extract).slice(0, STORE_CHARS)
+  // Same cleaning as the index path, so which route a body came in by is not
+  // visible on the card.
+  const body = paragraphize(stripEditorial(cleanBody(page.extract))).slice(0, STORE_CHARS)
   await writeCached(title, body)
   return body
 }
