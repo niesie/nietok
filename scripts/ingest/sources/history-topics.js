@@ -40,10 +40,12 @@ function cleanExtract(text) {
     .replace(/\([^)]*(?:[ˈˌːɑɛɪɔʊəθðʃʒŋ]|[A-Z]{2,}-)[^)]*\)/g, '')
     // Whatever is left that is empty or punctuation-only.
     .replace(/\(\s*[;,\s]*\)/g, '')
-    .replace(/\s+([,;.])/g, '$1')
+    .replace(/[ \t]+([,;.])/g, '$1')
     // A comma stranded by the removed gloss: "A ziggurat, is a type of…".
-    .replace(/,\s*(is|was|are|were|refers)\b/g, ' $1')
-    .replace(/\s{2,}/g, ' ')
+    .replace(/,[ \t]*(is|was|are|were|refers)\b/g, ' $1')
+    // Spaces and tabs only. \s matches newlines too, so collapsing it here was
+    // silently flattening every paragraph break the body arrived with.
+    .replace(/[ \t]{2,}/g, ' ')
     .trim()
 }
 
@@ -66,7 +68,9 @@ export async function fetchHistoryTopics({ dataDir = join(process.cwd(), 'public
   const signature = rotationSignature({
     // Bump when anything about the produced cards changes — extract length,
     // cleaning, card shape. The pool size and slice are covered separately.
-    shape: 'topic-v4',
+    // v5 — see the note in figures.js: forces today's slice to be rebuilt with
+    // the longer, cleaner, paragraphed bodies rather than waiting to rotate.
+    shape: 'topic-v5',
     poolSize: HISTORY_TOPICS.length,
     slice: DAILY_SLICE,
   })

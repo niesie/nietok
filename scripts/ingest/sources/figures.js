@@ -43,9 +43,10 @@ function cleanExtract(text) {
     // The empty lead the removed gloss leaves behind: "Arkhipov (; 30 January…".
     .replace(/\(\s*[;,]\s*/g, '(')
     .replace(/\(\s*[;,\s]*\)/g, '')
-    .replace(/\s+([,;.])/g, '$1')
-    .replace(/,\s*(is|was|are|were)\b/g, ' $1')
-    .replace(/\s{2,}/g, ' ')
+    .replace(/[ \t]+([,;.])/g, '$1')
+    .replace(/,[ \t]*(is|was|are|were)\b/g, ' $1')
+    // Spaces and tabs only — \s would eat the newlines between paragraphs.
+    .replace(/[ \t]{2,}/g, ' ')
     .trim()
 }
 
@@ -56,7 +57,11 @@ export async function fetchFigures({ dataDir = join(process.cwd(), 'public', 'da
   const signature = rotationSignature({
     // Bump when anything about the produced cards changes — extract length,
     // cleaning, card shape. The pool size and slice are covered separately.
-    shape: 'figure-v4',
+    // v5: bodies now come from the search index, so they are longer, free of
+    // "[citation needed]", and broken into paragraphs. Bumping the shape is
+    // what makes today's already-emitted slice regenerate instead of sitting
+    // there at the old quality until it next rotates.
+    shape: 'figure-v5',
     poolSize: FIGURES.length,
     slice: DAILY_SLICE,
   })
