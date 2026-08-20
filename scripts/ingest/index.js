@@ -10,6 +10,7 @@ import { applyQuota } from './quota.js'
 import { rank } from './rank.js'
 import { writeFeed } from './write.js'
 import { fetchAttention } from './sources/attention.js'
+import { fetchFigures } from './sources/figures.js'
 import { fetchFred } from './sources/fred.js'
 import { fetchGdelt } from './sources/gdelt.js'
 import { fetchGuardian } from './sources/guardian.js'
@@ -39,6 +40,7 @@ const SOURCES = [
   { name: 'rss', run: fetchRss },
   { name: 'wikimedia:onthisday', run: fetchOnThisDay },
   { name: 'history:topics', run: fetchHistoryTopics },
+  { name: 'history:figures', run: fetchFigures },
   { name: 'fred', run: fetchFred },
   { name: 'attention', run: fetchAttention },
   // GDELT is deliberately not registered — see sources/gdelt.js for why.
@@ -135,6 +137,14 @@ async function main() {
     card.dek = reasoning
   }
 
+  // A figure's hook replaces the encyclopedia opening on the card face; the
+  // story and impact go to the overlay.
+  const applyFigure = (card, figure) => {
+    if (!card || !figure?.hook) return
+    card.detail.figure = figure
+    card.dek = figure.hook
+  }
+
   // Re-apply anything a previous run already paid for.
   for (const card of finalCards) {
     const prior = existingDetails[card.id]
@@ -142,6 +152,8 @@ async function main() {
     if (prior?.parallel) card.detail.parallel = prior.parallel
     if (prior?.parallelAttempted) card.detail.parallelAttempted = true
     if (prior?.reasoningAttempted) card.detail.reasoningAttempted = true
+    if (prior?.figure) applyFigure(card, prior.figure)
+    if (prior?.figureAttempted) card.detail.figureAttempted = true
   }
 
   for (const parallel of enrichState.parallels ?? []) {
@@ -152,11 +164,16 @@ async function main() {
     applyReasoning(byId.get(cardId), reasoning)
   }
 
+  for (const figure of enrichState.figures ?? []) {
+    applyFigure(byId.get(figure.cardId), figure)
+  }
+
   // Mark every id we paid to ask about, so a null answer is not bought twice.
   for (const raw of enrichState.attempted ?? []) {
     const card = byId.get(raw.slice(2))
     if (!card) continue
     if (raw.startsWith('e-')) card.detail.reasoningAttempted = true
+    else if (raw.startsWith('f-')) card.detail.figureAttempted = true
     else card.detail.parallelAttempted = true
   }
 

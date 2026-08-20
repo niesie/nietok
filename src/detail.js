@@ -153,6 +153,20 @@ function renderParallel(detail) {
   return wrap
 }
 
+/** A figure's story and what changed because of it. */
+function renderFigure(detail) {
+  const f = detail.figure
+  if (!f?.story && !f?.impact) return null
+
+  const wrap = section('The story')
+  if (f.story) wrap.append(el('p', 'figure__story', f.story))
+  if (f.impact) {
+    wrap.append(el('div', 'detail__label', 'What changed'))
+    wrap.append(el('p', 'figure__impact', f.impact))
+  }
+  return wrap
+}
+
 /**
  * Where this is happening.
  *
@@ -320,6 +334,7 @@ function build(card, detail) {
   // The four context sections, in the order they earn their place: where this
   // sits in a sequence, the hard facts, the same-day timeline, then today.
   for (const node of [
+    renderFigure(d),
     renderParallel(d),
     renderPeers(d),
     renderSeries(d),

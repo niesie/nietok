@@ -50,6 +50,7 @@ export async function runEnrichment({ dataDir, dryRun, estimateOnly, existingDet
   // ---- 1. Collect whatever the previous run submitted ----
   const parallels = []
   const reasonings = []
+  const figures = []
   let pending = null
   try {
     pending = JSON.parse(await readFile(pendingPath, 'utf8'))
@@ -63,6 +64,7 @@ export async function runEnrichment({ dataDir, dryRun, estimateOnly, existingDet
       if (result.done) {
         parallels.push(...result.verified)
         reasonings.push(...result.reasonings)
+        figures.push(...result.figures)
         ledger = recordSpend(ledger, result.usage)
         report.collected = {
           batch: pending.batchId,
@@ -70,6 +72,7 @@ export async function runEnrichment({ dataDir, dryRun, estimateOnly, existingDet
           precedentsVerified: result.verified.length,
           precedentsRejected: result.claimed - result.verified.length,
           reasonings: result.reasonings.length,
+          figures: result.figures.length,
           errored: result.errored,
           cost: `$${(result.usage.inputTokens * 5e-7 + result.usage.outputTokens * 2.5e-6).toFixed(5)}`,
         }
@@ -79,7 +82,7 @@ export async function runEnrichment({ dataDir, dryRun, estimateOnly, existingDet
         if (!dryRun) await writeFile(pendingPath, JSON.stringify({ batchId: null }))
       } else {
         report.collected = { batch: pending.batchId, status: result.status, note: 'still processing' }
-        return { ...report, parallels, reasonings }
+        return { ...report, parallels, reasonings, figures }
       }
     } catch (err) {
       report.collectError = err.message
@@ -91,6 +94,7 @@ export async function runEnrichment({ dataDir, dryRun, estimateOnly, existingDet
     ...report,
     parallels,
     reasonings,
+    figures,
     ledger,
     ledgerPath,
     pendingPath,

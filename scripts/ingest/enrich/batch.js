@@ -5,9 +5,12 @@ import { estimateCost } from './budget.js'
 import {
   ECON_SCHEMA,
   ECON_SYSTEM,
+  FIGURE_SCHEMA,
+  FIGURE_SYSTEM,
   PARALLEL_SCHEMA,
   PARALLEL_SYSTEM,
   econUserMessage,
+  figureUserMessage,
   parallelUserMessage,
 } from './prompts.js'
 
@@ -68,6 +71,15 @@ export function selectCandidates(cards, _unusedDetails, limit) {
     .sort((a, b) => b.score - a.score)
     .map((card) => ({ task: 'econ', card }))
 
+  // Figures come second: there are ~110 of them, they are enriched once and
+  // never again, and an unenriched one shows an encyclopedia opening rather
+  // than a hook — which is exactly the dryness this is meant to fix.
+  const needsFigure = cards
+    .filter((card) => card.type === 'figure')
+    .filter((card) => !card.detail?.figure && !card.detail?.figureAttempted)
+    .sort((a, b) => b.score - a.score)
+    .map((card) => ({ task: 'figure', card }))
+
   const needsParallel = cards
     .filter((card) => card.type === 'news' || card.type === 'company')
     .filter((card) => (card.topics?.length ?? 0) > 0 && card.headline)
@@ -77,40 +89,45 @@ export function selectCandidates(cards, _unusedDetails, limit) {
     .sort((a, b) => b.score - a.score)
     .map((card) => ({ task: 'parallel', card }))
 
-  return [...needsEcon, ...needsParallel].slice(0, limit)
+  return [...needsEcon, ...needsFigure, ...needsParallel].slice(0, limit)
 }
 
 /** custom_id carries the task type so results can be routed on collection. */
-const encodeId = (task, cardId) => `${task === 'econ' ? 'e' : 'p'}-${cardId}`
+const TASK_PREFIX = { econ: 'e', figure: 'f', parallel: 'p' }
+const PREFIX_TASK = { e: 'econ', f: 'figure', p: 'parallel' }
+
+const encodeId = (task, cardId) => `${TASK_PREFIX[task]}-${cardId}`
 const decodeId = (raw) => ({
-  task: raw.startsWith('e-') ? 'econ' : 'parallel',
+  task: PREFIX_TASK[raw[0]] ?? 'parallel',
   cardId: raw.slice(2),
 })
 
 export async function submitBatch(candidates, apiKey, detailsById = {}) {
   const client = new Anthropic({ apiKey })
 
+  const SYSTEM = { econ: ECON_SYSTEM, figure: FIGURE_SYSTEM, parallel: PARALLEL_SYSTEM }
+  const SCHEMA = { econ: ECON_SCHEMA, figure: FIGURE_SCHEMA, parallel: PARALLEL_SCHEMA }
+
   const requests = candidates.map(({ task, card }) => {
-    const isEcon = task === 'econ'
+    // The card's own detail first — it is this run's state, where the details
+    // map is the previous run's.
+    const detail = card.detail ?? detailsById[card.id] ?? {}
+    const content =
+      task === 'econ'
+        ? econUserMessage(card, detail)
+        : task === 'figure'
+          ? figureUserMessage(card, detail)
+          : parallelUserMessage(card)
+
     return {
       custom_id: encodeId(task, card.id),
       params: {
         model: MODEL,
-        max_tokens: MAX_TOKENS,
-        system: isEcon ? ECON_SYSTEM : PARALLEL_SYSTEM,
-        messages: [
-          {
-            role: 'user',
-            // The card's own detail first — it is this run's state, where the
-            // details map is the previous run's.
-            content: isEcon
-              ? econUserMessage(card, card.detail ?? detailsById[card.id] ?? {})
-              : parallelUserMessage(card),
-          },
-        ],
-        output_config: {
-          format: { type: 'json_schema', schema: isEcon ? ECON_SCHEMA : PARALLEL_SCHEMA },
-        },
+        // A figure card is three fields of prose, not one line.
+        max_tokens: task === 'figure' ? 500 : MAX_TOKENS,
+        system: SYSTEM[task],
+        messages: [{ role: 'user', content }],
+        output_config: { format: { type: 'json_schema', schema: SCHEMA[task] } },
       },
     }
   })
@@ -122,6 +139,7 @@ export async function submitBatch(candidates, apiKey, detailsById = {}) {
     submittedIds: candidates.map(({ task, card }) => encodeId(task, card.id)),
     breakdown: {
       econ: candidates.filter((c) => c.task === 'econ').length,
+      figure: candidates.filter((c) => c.task === 'figure').length,
       parallel: candidates.filter((c) => c.task === 'parallel').length,
     },
   }
@@ -176,6 +194,7 @@ export async function collectBatch(batchId, apiKey) {
 
   const rawParallels = []
   const reasonings = []
+  const figures = []
   let inputTokens = 0
   let outputTokens = 0
   let errored = 0
@@ -200,6 +219,15 @@ export async function collectBatch(batchId, apiKey) {
       const parsed = JSON.parse(text)
       if (task === 'econ') {
         if (parsed.reasoning?.trim()) reasonings.push({ cardId, reasoning: parsed.reasoning.trim() })
+      } else if (task === 'figure') {
+        if (parsed.hook?.trim()) {
+          figures.push({
+            cardId,
+            hook: parsed.hook.trim(),
+            story: parsed.story?.trim() ?? '',
+            impact: parsed.impact?.trim() ?? '',
+          })
+        }
       } else if (parsed.found && parsed.wikipediaTitle) {
         rawParallels.push({ cardId, ...parsed })
       }
@@ -214,6 +242,7 @@ export async function collectBatch(batchId, apiKey) {
     done: true,
     verified,
     reasonings,
+    figures,
     claimed: rawParallels.length,
     errored,
     usage: { inputTokens, outputTokens, calls: total },

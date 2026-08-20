@@ -16,6 +16,7 @@
      what people looked up, not what an editor published. */
   --accent-attention: #d98fb3;
   --accent-quiz: #e8b04b;
+  --accent-figure: #c9a3e0;
 
   --serif: ui-serif, Georgia, "Iowan Old Style", "Times New Roman", Times, serif;
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
@@ -630,6 +631,28 @@ img {
 .facts dd {
   margin: 0;
   color: var(--muted);
+}
+
+/* ---------- figures ---------- */
+.figure__story,
+.figure__impact {
+  font-size: 1.02rem;
+  line-height: 1.6;
+  color: rgba(244, 242, 238, 0.86);
+  margin: 0 0 0.9rem;
+}
+
+/* A figure card leads with a portrait and a hook, so the name is the anchor
+   and the hook needs room to breathe under it. */
+.card--figure .headline {
+  font-size: clamp(2rem, 8vw, 3rem);
+  -webkit-line-clamp: 2;
+}
+
+.card--figure .dek {
+  -webkit-line-clamp: 5;
+  font-size: clamp(1rem, 3.9vw, 1.15rem);
+  color: rgba(244, 242, 238, 0.8);
 }
 
 /* ---------- locator map ---------- */

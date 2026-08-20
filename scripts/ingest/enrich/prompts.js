@@ -89,6 +89,47 @@ export function econUserMessage(card, detail) {
   return parts.join('\n')
 }
 
+export const FIGURE_SYSTEM = `You write short profiles of historical figures for a feed people scroll on their phone.
+
+You are given an encyclopedia extract. Write three things.
+
+hook: one sentence that makes someone stop scrolling. State the most arresting true thing about this person — a decision, a consequence, a contradiction. Never a question, never "you won't believe", never a label like "pioneer" or "visionary". "He refused an order to fire a nuclear torpedo, alone, from a submarine that had lost radio contact" is a hook. "He was an important Soviet naval officer" is not.
+
+story: two or three sentences of what actually happened. Concrete: what they did, under what circumstances, what it cost them.
+
+impact: one or two sentences on what changed because of it, and what the world looks like now as a result.
+
+Use only what the extract supports. If it does not give you a date, a number or an outcome, do not supply one — you are writing from this text, not from memory, and an invented detail is worse than a duller sentence. Where the extract is uncertain or disputed, say so plainly rather than resolving it.
+
+Plain language. No exclamation marks. Do not begin the hook with the person's name — the card shows it directly above.`
+
+export const FIGURE_SCHEMA = {
+  type: 'object',
+  properties: {
+    hook: {
+      type: 'string',
+      description:
+        'One arresting, factual sentence. Not a question, not a label, does not start with the name.',
+    },
+    story: { type: 'string', description: 'Two or three concrete sentences of what happened.' },
+    impact: { type: 'string', description: 'One or two sentences on what changed as a result.' },
+  },
+  required: ['hook', 'story', 'impact'],
+  additionalProperties: false,
+}
+
+export function figureUserMessage(card, detail) {
+  return [
+    `Person: ${detail.name ?? card.headline}`,
+    detail.era ? `Dates: ${detail.era}` : null,
+    '',
+    'Encyclopedia extract:',
+    detail.extract ?? card.dek ?? '',
+  ]
+    .filter((line) => line !== null)
+    .join('\n')
+}
+
 export function parallelUserMessage(card) {
   const parts = [`Headline: ${card.headline}`]
   if (card.dek) parts.push(`Summary: ${card.dek}`)

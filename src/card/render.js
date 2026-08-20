@@ -7,6 +7,7 @@ const TYPE_LABEL = {
   history: 'History',
   attention: 'Attention',
   quiz: 'Guess',
+  figure: 'Figure',
 }
 
 const MONTHS = [

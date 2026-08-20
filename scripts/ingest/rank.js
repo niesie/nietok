@@ -10,6 +10,7 @@ const HALF_LIFE_HOURS = {
   history: 24 * 10,
   // Refreshed daily, and a spike is only interesting while it is happening.
   attention: 30,
+  figure: 24 * 14,
   default: 48,
 }
 
