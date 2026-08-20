@@ -137,6 +137,16 @@ export async function writeFeed(cards, { path, dryRun = false } = {}) {
 
   merged = applyQuota(merged, MAX_CARDS)
 
+  // A collapse, not just an emptying. A single source failing — Wikimedia
+  // returning 429 took 393 anniversary cards out in one run — should never
+  // reach the reader as a feed less than half its previous size.
+  if (!dryRun && existing.length >= 200 && merged.length < existing.length * 0.5) {
+    throw new Error(
+      `refusing to write ${merged.length} cards over an existing ${existing.length}: ` +
+        'a source has probably failed — check the per-source report above',
+    )
+  }
+
   if (!dryRun && merged.length === 0 && existing.length > 0) {
     throw new Error('refusing to write an empty feed over an existing one')
   }

@@ -7,8 +7,12 @@ const CACHE_DIR = join(process.cwd(), '.cache')
 // Minimum gap between requests to the same host. Wikimedia and GDELT both
 // throttle aggressively on bursts, so we pace rather than wait for a 429.
 const HOST_INTERVAL_MS = {
-  'api.wikimedia.org': 200,
-  'en.wikipedia.org': 200,
+  // Raised from 200ms. Fetching full article bodies alongside the on-this-day
+  // feed tripped Wikimedia's rate limiter, and the 429 landed on the
+  // anniversary source rather than on the requests that caused it — taking 393
+  // cards out of the feed. Wikipedia is not a resource to be aggressive with.
+  'api.wikimedia.org': 700,
+  'en.wikipedia.org': 700,
   'query.wikidata.org': 1000,
   // GDELT throttles hard — at 6s spacing four of six queries still came back
   // 429. Pacing is cheaper than burning four retry cycles per query.

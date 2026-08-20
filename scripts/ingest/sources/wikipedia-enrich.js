@@ -14,7 +14,9 @@ const META_BATCH = 50
  * characters, a caption rather than something to read. Taking the body means
  * one request per article, which is why the disk cache below exists.
  */
-const EXTRACT_CONCURRENCY = 8
+// Three, not eight. Eight concurrent body renders plus the ordinary feed
+// traffic was enough to get the whole of Wikimedia rate-limiting us.
+const EXTRACT_CONCURRENCY = 3
 
 // Article bodies barely change, and re-fetching ~750 of them every three hours
 // would be absurd. Kept out of public/ so it is cached by CI but not deployed.
