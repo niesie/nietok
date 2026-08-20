@@ -48,6 +48,57 @@ export function linkSameDay(cards) {
 }
 
 /**
+ * Connect a news card to the same story as told by other outlets.
+ *
+ * Half the news cards carry no article body — the feed only supplied a
+ * standfirst — so opening them added nothing beyond the sentence already on
+ * the card face. This is the answer that uses what the app actually has:
+ * sixteen outlets, so the context worth showing is how somebody else framed
+ * the same events.
+ *
+ * Matches are restricted to a different outlet on purpose. Three more BBC
+ * stories is a list; the BBC, Al Jazeera and SCMP on one subject is a view.
+ */
+export function linkNewsToNews(cards) {
+  const news = cards
+    .filter((c) => NEWS_TYPES.has(c.type) && (c.topics?.length ?? 0) > 0)
+    .sort((a, b) => b.score - a.score)
+
+  if (news.length < 2) return cards
+
+  for (const card of news) {
+    const topics = new Set(card.topics ?? [])
+    if (topics.size === 0) continue
+
+    const matches = []
+    for (const item of news) {
+      if (item.id === card.id) continue
+      if (item.source?.name === card.source?.name) continue
+      const overlap = (item.topics ?? []).filter((t) => topics.has(t))
+      // One shared topic is too loose — "economy" alone connects almost
+      // everything. Two means they are plausibly about the same thing.
+      if (overlap.length < 2) continue
+      matches.push({ item, overlap: overlap.length })
+      if (matches.length >= MAX_RELATED_NEWS * 4) break
+    }
+
+    if (matches.length === 0) continue
+
+    card.detail.relatedNews = matches
+      .sort((a, b) => b.overlap - a.overlap || b.item.score - a.item.score)
+      .slice(0, MAX_RELATED_NEWS)
+      .map(({ item }) => ({
+        id: item.id,
+        headline: item.headline,
+        source: item.source?.name ?? null,
+        url: item.source?.url ?? null,
+      }))
+  }
+
+  return cards
+}
+
+/**
  * Connect a history card to current stories sharing its topics.
  *
  * This is the app's thesis running in reverse, and it is what stops the

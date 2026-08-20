@@ -13,12 +13,12 @@
  */
 export const SERIES = [
   // ---- US: prices and money ----
-  { id: 'CPIAUCSL', label: 'US inflation', transform: 'yoy_pct', format: 'percent', type: 'econ', topics: ['economy', 'americas'] },
+  { id: 'CPIAUCSL', peerGroup: 'Consumer price inflation', country: 'United States', label: 'US inflation', transform: 'yoy_pct', format: 'percent', type: 'econ', topics: ['economy', 'americas'] },
   { id: 'PCEPILFE', label: 'US core PCE inflation', transform: 'yoy_pct', format: 'percent', type: 'econ', topics: ['economy', 'americas'] },
   { id: 'M2SL', label: 'US money supply (M2)', transform: 'yoy_pct', format: 'percent', type: 'econ', topics: ['economy', 'americas'] },
 
   // ---- US: real economy ----
-  { id: 'UNRATE', label: 'US unemployment', format: 'percent', type: 'econ', topics: ['economy', 'americas'] },
+  { id: 'UNRATE', peerGroup: 'Unemployment rate', country: 'United States', label: 'US unemployment', format: 'percent', type: 'econ', topics: ['economy', 'americas'] },
   { id: 'PAYEMS', label: 'US payroll employment', transform: 'yoy_pct', format: 'percent', type: 'econ', topics: ['economy', 'americas'] },
   { id: 'CIVPART', label: 'US labour force participation', format: 'percent', type: 'econ', topics: ['economy', 'americas'] },
   { id: 'GDPC1', label: 'US real GDP', transform: 'yoy_pct', format: 'percent', type: 'econ', topics: ['economy', 'americas'] },
@@ -31,7 +31,7 @@ export const SERIES = [
   // ---- US: rates and credit ----
   { id: 'FEDFUNDS', label: 'US federal funds rate', format: 'percent', type: 'econ', topics: ['economy', 'americas'] },
   { id: 'DGS2', label: 'US 2-year Treasury yield', format: 'percent', type: 'econ', topics: ['economy', 'americas'] },
-  { id: 'DGS10', label: 'US 10-year Treasury yield', format: 'percent', type: 'econ', topics: ['economy', 'americas'] },
+  { id: 'DGS10', peerGroup: '10-year government bond yield', country: 'United States', label: 'US 10-year Treasury yield', format: 'percent', type: 'econ', topics: ['economy', 'americas'] },
   { id: 'DGS30', label: 'US 30-year Treasury yield', format: 'percent', type: 'econ', topics: ['economy', 'americas'] },
   { id: 'T10Y2Y', label: 'US yield curve (10y minus 2y)', format: 'percentPlain', type: 'econ', topics: ['economy', 'americas'] },
   { id: 'T10YIE', label: 'US 10-year inflation expectations', format: 'percent', type: 'econ', topics: ['economy', 'americas'] },
@@ -40,27 +40,27 @@ export const SERIES = [
   { id: 'MORTGAGE30US', label: 'US 30-year mortgage rate', format: 'percent', type: 'econ', topics: ['economy', 'americas'] },
 
   // ---- Euro area and Europe ----
-  { id: 'CP0000EZ19M086NEST', label: 'Euro area inflation', transform: 'yoy_pct', format: 'percent', type: 'econ', topics: ['economy', 'eu'] },
+  { id: 'CP0000EZ19M086NEST', peerGroup: 'Consumer price inflation', country: 'Euro area', label: 'Euro area inflation', transform: 'yoy_pct', format: 'percent', type: 'econ', topics: ['economy', 'eu'] },
   { id: 'ECBDFR', label: 'ECB deposit rate', format: 'percent', type: 'econ', topics: ['economy', 'eu'] },
   { id: 'CLVMNACSCAB1GQEA19', label: 'Euro area real GDP', transform: 'yoy_pct', format: 'percent', type: 'econ', topics: ['economy', 'eu'] },
-  { id: 'IRLTLT01DEM156N', label: 'German 10-year bund yield', format: 'percent', type: 'econ', topics: ['economy', 'eu'] },
-  { id: 'IRLTLT01FRM156N', label: 'French 10-year yield', format: 'percent', type: 'econ', topics: ['economy', 'eu'] },
-  { id: 'IRLTLT01ITM156N', label: 'Italian 10-year yield', format: 'percent', type: 'econ', topics: ['economy', 'eu'] },
-  { id: 'IRLTLT01ESM156N', label: 'Spanish 10-year yield', format: 'percent', type: 'econ', topics: ['economy', 'eu'] },
-  { id: 'IRLTLT01GBM156N', label: 'UK 10-year gilt yield', format: 'percent', type: 'econ', topics: ['economy', 'eu'] },
-  { id: 'LRHUTTTTDEM156S', label: 'German unemployment', format: 'percent', type: 'econ', topics: ['economy', 'eu'] },
-  { id: 'LRHUTTTTFRM156S', label: 'French unemployment', format: 'percent', type: 'econ', topics: ['economy', 'eu'] },
-  { id: 'LRHUTTTTITM156S', label: 'Italian unemployment', format: 'percent', type: 'econ', topics: ['economy', 'eu'] },
-  { id: 'LRHUTTTTESM156S', label: 'Spanish unemployment', format: 'percent', type: 'econ', topics: ['economy', 'eu'] },
-  { id: 'LRHUTTTTGBM156S', label: 'UK unemployment', format: 'percent', type: 'econ', topics: ['economy', 'eu'] },
+  { id: 'IRLTLT01DEM156N', peerGroup: '10-year government bond yield', country: 'Germany', label: 'German 10-year bund yield', format: 'percent', type: 'econ', topics: ['economy', 'eu'] },
+  { id: 'IRLTLT01FRM156N', peerGroup: '10-year government bond yield', country: 'France', label: 'French 10-year yield', format: 'percent', type: 'econ', topics: ['economy', 'eu'] },
+  { id: 'IRLTLT01ITM156N', peerGroup: '10-year government bond yield', country: 'Italy', label: 'Italian 10-year yield', format: 'percent', type: 'econ', topics: ['economy', 'eu'] },
+  { id: 'IRLTLT01ESM156N', peerGroup: '10-year government bond yield', country: 'Spain', label: 'Spanish 10-year yield', format: 'percent', type: 'econ', topics: ['economy', 'eu'] },
+  { id: 'IRLTLT01GBM156N', peerGroup: '10-year government bond yield', country: 'United Kingdom', label: 'UK 10-year gilt yield', format: 'percent', type: 'econ', topics: ['economy', 'eu'] },
+  { id: 'LRHUTTTTDEM156S', peerGroup: 'Unemployment rate', country: 'Germany', label: 'German unemployment', format: 'percent', type: 'econ', topics: ['economy', 'eu'] },
+  { id: 'LRHUTTTTFRM156S', peerGroup: 'Unemployment rate', country: 'France', label: 'French unemployment', format: 'percent', type: 'econ', topics: ['economy', 'eu'] },
+  { id: 'LRHUTTTTITM156S', peerGroup: 'Unemployment rate', country: 'Italy', label: 'Italian unemployment', format: 'percent', type: 'econ', topics: ['economy', 'eu'] },
+  { id: 'LRHUTTTTESM156S', peerGroup: 'Unemployment rate', country: 'Spain', label: 'Spanish unemployment', format: 'percent', type: 'econ', topics: ['economy', 'eu'] },
+  { id: 'LRHUTTTTGBM156S', peerGroup: 'Unemployment rate', country: 'United Kingdom', label: 'UK unemployment', format: 'percent', type: 'econ', topics: ['economy', 'eu'] },
 
   // ---- Asia-Pacific and North America ----
-  { id: 'IRLTLT01JPM156N', label: 'Japanese 10-year yield', format: 'percent', type: 'econ', topics: ['economy', 'asia'] },
-  { id: 'IRLTLT01KRM156N', label: 'South Korean 10-year yield', format: 'percent', type: 'econ', topics: ['economy', 'asia'] },
-  { id: 'IRLTLT01CAM156N', label: 'Canadian 10-year yield', format: 'percent', type: 'econ', topics: ['economy', 'americas'] },
-  { id: 'IRLTLT01AUM156N', label: 'Australian 10-year yield', format: 'percent', type: 'econ', topics: ['economy', 'asia'] },
-  { id: 'LRHUTTTTJPM156S', label: 'Japanese unemployment', format: 'percent', type: 'econ', topics: ['economy', 'asia'] },
-  { id: 'LRHUTTTTCAM156S', label: 'Canadian unemployment', format: 'percent', type: 'econ', topics: ['economy', 'americas'] },
+  { id: 'IRLTLT01JPM156N', peerGroup: '10-year government bond yield', country: 'Japan', label: 'Japanese 10-year yield', format: 'percent', type: 'econ', topics: ['economy', 'asia'] },
+  { id: 'IRLTLT01KRM156N', peerGroup: '10-year government bond yield', country: 'South Korea', label: 'South Korean 10-year yield', format: 'percent', type: 'econ', topics: ['economy', 'asia'] },
+  { id: 'IRLTLT01CAM156N', peerGroup: '10-year government bond yield', country: 'Canada', label: 'Canadian 10-year yield', format: 'percent', type: 'econ', topics: ['economy', 'americas'] },
+  { id: 'IRLTLT01AUM156N', peerGroup: '10-year government bond yield', country: 'Australia', label: 'Australian 10-year yield', format: 'percent', type: 'econ', topics: ['economy', 'asia'] },
+  { id: 'LRHUTTTTJPM156S', peerGroup: 'Unemployment rate', country: 'Japan', label: 'Japanese unemployment', format: 'percent', type: 'econ', topics: ['economy', 'asia'] },
+  { id: 'LRHUTTTTCAM156S', peerGroup: 'Unemployment rate', country: 'Canada', label: 'Canadian unemployment', format: 'percent', type: 'econ', topics: ['economy', 'americas'] },
 
   // ---- Energy: the most geopolitical numbers here ----
   { id: 'DCOILBRENTEU', label: 'Brent crude', format: 'usd', unit: '/bbl', type: 'econ', topics: ['energy'] },

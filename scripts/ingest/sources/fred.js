@@ -302,6 +302,32 @@ async function fetchSeries(config, key, start) {
   return { meta: meta?.seriess?.[0] ?? null, points }
 }
 
+/**
+ * Cross-country comparison.
+ *
+ * "US 10-year Treasury yield 4.7%" on its own is a number with nothing to
+ * measure it against. The same indicator for Germany, Japan and the UK turns it
+ * into a position — and we already fetch all of them, so this costs one pass
+ * over data we have rather than any extra request.
+ */
+function buildPeerGroups(measured) {
+  const groups = new Map()
+  for (const entry of measured) {
+    if (!entry.config.peerGroup) continue
+    if (!groups.has(entry.config.peerGroup)) groups.set(entry.config.peerGroup, [])
+    groups.get(entry.config.peerGroup).push({
+      id: entry.config.id,
+      country: entry.config.country ?? entry.config.label,
+      value: entry.stats.latest.value,
+      display: entry.display,
+      asOf: entry.stats.latest.date,
+    })
+  }
+
+  for (const list of groups.values()) list.sort((a, b) => b.value - a.value)
+  return groups
+}
+
 export async function fetchFred() {
   const key = process.env.FRED_KEY
   if (!key) return { cards: [], skipped: 'FRED_KEY not set' }
@@ -313,6 +339,11 @@ export async function fetchFred() {
   const cards = []
   const skipped = [] // genuinely broken: fetch failed, stale, too few points
   const unremarkable = [] // healthy but not doing anything worth a screen
+
+  // Measured first, emitted second. A peer comparison needs every country's
+  // reading, including the ones too quiet to deserve a card of their own.
+  const measured = []
+  const emit = []
 
   for (const config of SERIES) {
     let raw
@@ -353,6 +384,11 @@ export async function fetchFred() {
       )
     }
 
+    const value = formatValue(stats.latest.value, config)
+
+    // Recorded whether or not it earns a card, so it can serve as a peer.
+    measured.push({ config, stats, display: value })
+
     // Markets keep their tighter same-day rule; everything else must be doing
     // something genuinely unusual to be worth a screen.
     if (config.notableOnly) {
@@ -362,8 +398,16 @@ export async function fetchFred() {
       continue
     }
 
-    const value = formatValue(stats.latest.value, config)
     const spark = downsample(points, SPARK_POINTS).map((p) => Number(p.value.toFixed(4)))
+
+    emit.push({ config, stats, value, spark, points, notability, raw })
+  }
+
+  // ---- second pass: peers are known, so cards can carry their comparison ----
+  const peerGroups = buildPeerGroups(measured)
+
+  for (const { config, stats, value, spark, points, notability, raw } of emit) {
+    const peers = config.peerGroup ? (peerGroups.get(config.peerGroup) ?? []) : []
 
     cards.push(
       makeCard({
@@ -405,6 +449,9 @@ export async function fetchFred() {
           },
           // Why this cleared the bar — also the input the reasoning prompt uses.
           notability: notability.reasons,
+          // The same indicator elsewhere, so a national number reads as a
+          // position rather than a bare figure.
+          peers: peers.length > 1 ? { group: config.peerGroup, entries: peers } : null,
         },
       }),
     )

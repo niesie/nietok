@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { parseArgs } from 'node:util'
 
-import { linkHistoryToNews, linkSameDay } from './crosslink.js'
+import { linkHistoryToNews, linkNewsToNews, linkSameDay } from './crosslink.js'
 import { dedupe } from './dedupe.js'
 import { persistLedger, runEnrichment, submitNextBatch } from './enrich/index.js'
 import { applyQuota } from './quota.js'
@@ -74,6 +74,7 @@ async function main() {
   // current stories, and after the limit so a sample links within itself.
   linkSameDay(finalCards)
   linkHistoryToNews(finalCards)
+  linkNewsToNews(finalCards)
 
   const byType = finalCards.reduce((acc, c) => ({ ...acc, [c.type]: (acc[c.type] ?? 0) + 1 }), {})
   console.log('by type:', byType)

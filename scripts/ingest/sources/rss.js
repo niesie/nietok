@@ -11,34 +11,56 @@ import { canonicalUrl, inferRegion, inferTopics, makeCard, makeId, stripHtml } f
  * clients. The ECB feed is absent because its items carry no description,
  * which would produce cards with nothing on their face.
  */
+/**
+ * `limit` is per feed, and deliberately uneven.
+ *
+ * The feed should read as Western coverage with regular non-Western
+ * perspective, not an even split — an even split gave every outlet 30 slots
+ * and buried the story of the day under thirteen national front pages.
+ *
+ * `strict` feeds must additionally pass a geopolitical relevance test. Some
+ * outlets publish a general national front page rather than a world desk, and
+ * without the gate they contribute celebrity and sport rather than news.
+ */
 const FEEDS = [
-  // Europe / Brussels
-  { name: 'Politico EU', url: 'https://www.politico.eu/feed/', topics: ['eu'] },
-  { name: 'Deutsche Welle', url: 'https://rss.dw.com/rdf/rss-en-world', topics: ['eu'] },
-  { name: 'France 24', url: 'https://www.france24.com/en/rss', topics: ['eu'] },
+  // ---- Core Western coverage ----
+  { name: 'BBC World', url: 'https://feeds.bbci.co.uk/news/world/rss.xml', topics: [], limit: 26 },
+  { name: 'NPR World', url: 'https://feeds.npr.org/1004/rss.xml', topics: [], limit: 12 },
+  { name: 'Politico EU', url: 'https://www.politico.eu/feed/', topics: ['eu'], limit: 12 },
+  { name: 'Deutsche Welle', url: 'https://rss.dw.com/rdf/rss-en-world', topics: ['eu'], limit: 14 },
+  { name: 'France 24', url: 'https://www.france24.com/en/rss', topics: ['eu'], limit: 20 },
 
-  // Middle East
-  { name: 'Al Jazeera', url: 'https://www.aljazeera.com/xml/rss/all.xml', topics: ['mena'] },
-  { name: 'Arab News', url: 'https://www.arabnews.com/rss.xml', topics: ['mena'] },
-
-  // Asia
-  { name: 'South China Morning Post', url: 'https://www.scmp.com/rss/91/feed', topics: ['china', 'asia'] },
-  { name: 'The Diplomat', url: 'https://thediplomat.com/feed/', topics: ['asia'] },
-  { name: 'Times of India', url: 'https://timesofindia.indiatimes.com/rssfeedstopstories.cms', topics: ['asia'] },
-
-  // Africa
-  { name: 'Africanews', url: 'https://www.africanews.com/feed/rss', topics: ['africa'] },
-  { name: 'AllAfrica', url: 'https://allafrica.com/tools/headlines/rdf/latest/headlines.rdf', topics: ['africa'] },
-
-  // Latin America
-  { name: 'MercoPress', url: 'https://en.mercopress.com/rss/', topics: ['americas'] },
-  { name: 'Buenos Aires Herald', url: 'https://buenosairesherald.com/feed', topics: ['americas'] },
-
-  // Russia / Ukraine
-  { name: 'The Moscow Times', url: 'https://www.themoscowtimes.com/rss/news', topics: ['ru-ua'] },
+  // ---- Regular non-Western perspective, in smaller measure ----
+  { name: 'Al Jazeera', url: 'https://www.aljazeera.com/xml/rss/all.xml', topics: ['mena'], limit: 14 },
+  { name: 'Arab News', url: 'https://www.arabnews.com/rss.xml', topics: ['mena'], limit: 8 },
+  { name: 'South China Morning Post', url: 'https://www.scmp.com/rss/91/feed', topics: ['china', 'asia'], limit: 12, strict: true },
+  { name: 'The Diplomat', url: 'https://thediplomat.com/feed/', topics: ['asia'], limit: 12 },
+  { name: 'Times of India', url: 'https://timesofindia.indiatimes.com/rssfeeds/296589292.cms', topics: ['asia'], limit: 6, strict: true },
+  { name: 'Africanews', url: 'https://www.africanews.com/feed/rss', topics: ['africa'], limit: 12, strict: true },
+  { name: 'AllAfrica', url: 'https://allafrica.com/tools/headlines/rdf/latest/headlines.rdf', topics: ['africa'], limit: 10, strict: true },
+  { name: 'MercoPress', url: 'https://en.mercopress.com/rss/', topics: ['americas'], limit: 10 },
+  { name: 'Buenos Aires Herald', url: 'https://buenosairesherald.com/feed', topics: ['americas'], limit: 8 },
+  { name: 'The Moscow Times', url: 'https://www.themoscowtimes.com/rss/news', topics: ['ru-ua'], limit: 12 },
 ]
 
-const PER_FEED_LIMIT = 30
+const DEFAULT_LIMIT = 12
+
+/**
+ * Obvious non-news. This exists because Times of India's front page supplied
+ * WWE results, NFL injuries, Bollywood feuds and horoscopes to what is
+ * supposed to be a geopolitics feed.
+ */
+const NOISE = /\b(bollywood|box office|wwe|nfl|nba|ipl|cricket|premier league|la liga|transfer window|horoscope|zodiac|astrolog|recipe|viral (reel|video)|streamer|youtuber|influencer|celebrity|actress|superstar|web series|trailer (out|drop)|teaser|grammy|oscars?|red carpet|wedding|dating|boyfriend|girlfriend|fashion week|beauty pageant|reality show|box-office|tarot|numerolog)\b/i
+
+/** Enough signal that a story is about the world rather than a local incident. */
+const GEOPOLITICAL = /\b(government|minister|president|prime minister|parliament|election|vote|policy|sanction|tariff|trade|treaty|summit|diplomat|embassy|military|troops|war|conflict|ceasefire|protest|strike|economy|economic|inflation|central bank|budget|court|law|border|migrant|refugee|nuclear|energy|oil|gas|climate|un |united nations|nato|eu |european union|security|crisis|talks|deal|agreement|aid|corruption|coup|rebel|militant|killed|attack)\b/i
+
+function isUsable(headline, dek, strict) {
+  const text = `${headline} ${dek}`
+  if (NOISE.test(text)) return false
+  if (strict && !GEOPOLITICAL.test(text)) return false
+  return true
+}
 
 const parser = new XMLParser({
   ignoreAttributes: false,
@@ -106,6 +128,21 @@ function dateOf(item) {
   return Number.isFinite(parsed) ? new Date(parsed).toISOString() : new Date().toISOString()
 }
 
+/**
+ * Trim to a sentence boundary.
+ *
+ * A hard character slice cut headlines mid-word — "the minister said the
+ * agreement would" — which reads as a bug rather than a summary.
+ */
+function trimToSentence(text, max) {
+  if (text.length <= max) return text
+  const window = text.slice(0, max)
+  const sentence = Math.max(window.lastIndexOf('. '), window.lastIndexOf('! '), window.lastIndexOf('? '))
+  if (sentence > max * 0.4) return window.slice(0, sentence + 1).trim()
+  const word = window.lastIndexOf(' ')
+  return `${window.slice(0, word > 0 ? word : max).trim()}…`
+}
+
 async function fetchFeed(feed) {
   const xml = await fetchWithRetry(feed.url, {
     as: 'text',
@@ -117,17 +154,30 @@ async function fetchFeed(feed) {
     },
   })
 
-  const items = extractItems(parser.parse(xml)).slice(0, PER_FEED_LIMIT)
+  const items = extractItems(parser.parse(xml))
+  const limit = feed.limit ?? DEFAULT_LIMIT
   const cards = []
 
   for (const item of items) {
+    if (cards.length >= limit) break
+
     const headline = stripHtml(textOf(item.title))
     const link = linkOf(item)
     if (!headline || !link) continue
 
-    const dek = stripHtml(textOf(item.description) || textOf(item.summary)).slice(0, 320)
+    const rawDek = stripHtml(textOf(item.description) || textOf(item.summary))
+    if (!isUsable(headline, rawDek, feed.strict)) continue
+
+    const dek = trimToSentence(rawDek, 300)
+
+    // Some feeds carry the article body in content:encoded. Where they do, the
+    // detail view has something the card face does not — otherwise "tap for
+    // context" showed the same sentence back, which is worse than no button.
+    const body = stripHtml(textOf(item['content:encoded']))
+    const extract = body.length > dek.length + 120 ? trimToSentence(body, 1400) : null
+
     const url = canonicalUrl(link)
-    const topics = [...new Set([...inferTopics(headline, dek), ...feed.topics])]
+    const topics = [...new Set([...inferTopics(headline, rawDek), ...feed.topics])]
     const image = imageOf(item)
 
     cards.push(
@@ -140,7 +190,7 @@ async function fetchFeed(feed) {
         source: { name: feed.name, url, publishedAt: dateOf(item) },
         topics,
         region: inferRegion(topics),
-        detail: { outlet: feed.name, extract: dek },
+        detail: { outlet: feed.name, ...(extract ? { extract } : {}) },
       }),
     )
   }

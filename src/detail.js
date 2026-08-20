@@ -31,10 +31,18 @@ function section(title) {
   return wrap
 }
 
-/** "Also on this day" — a vertical timeline, with this card marked. */
+/**
+ * Other events sharing this calendar date.
+ *
+ * This is a coincidence of the calendar, not a timeline of the event, and
+ * presenting it as "the timeline" was misleading — so it is titled as the
+ * curiosity it is, and suppressed entirely when the card has a real
+ * event sequence to show instead.
+ */
 function renderSameDay(detail, card) {
   if (!detail.sameDay?.length) return null
-  const wrap = section(`Also on ${Number(detail.day)} ${MONTH_NAMES[Number(detail.month) - 1]}`)
+  if (hasChain(detail)) return null
+  const wrap = section(`Also on ${Number(detail.day)} ${MONTH_NAMES[Number(detail.month) - 1]}, other years`)
   const list = el('ol', 'timeline')
 
   const entries = [...detail.sameDay, { id: card.id, year: detail.year, headline: card.headline, self: true }]
@@ -50,11 +58,20 @@ function renderSameDay(detail, card) {
   return wrap
 }
 
-/** Where the event sits in a sequence: part-of nesting, and what it follows. */
+function hasChain(detail) {
+  const c = detail.chain
+  return Boolean(c && ((c.partOf?.length ?? 0) + (c.follows?.length ?? 0) + (c.followedBy?.length ?? 0)))
+}
+
+/**
+ * The timeline of the event itself — what it was part of, what led to it and
+ * what came after, from Wikidata's structured relations. This is what a
+ * reader means by "timeline"; the same-date list above is not.
+ */
 function renderChain(detail) {
   const chain = detail.chain
   if (!chain) return null
-  const wrap = section('Context')
+  const wrap = section('Timeline of this event')
 
   if (chain.partOf?.length) {
     const nest = el('ul', 'chain chain--nested')
@@ -135,6 +152,32 @@ function renderParallel(detail) {
   return wrap
 }
 
+/**
+ * The same indicator in other countries.
+ *
+ * A single national figure is a number with nothing to measure it against —
+ * "random economic data from the US index only, without any context" was
+ * exactly the complaint. Ranked, with this card's country marked.
+ */
+function renderPeers(detail) {
+  const peers = detail.peers
+  if (!peers?.entries?.length) return null
+
+  const wrap = section(peers.group)
+  const list = el('ol', 'peers')
+
+  for (const entry of peers.entries) {
+    const isSelf = entry.id === detail.seriesId
+    const row = el('li', `peers__row${isSelf ? ' peers__row--self' : ''}`)
+    row.append(el('span', 'peers__country', entry.country))
+    row.append(el('span', 'peers__value', entry.display))
+    list.append(row)
+  }
+
+  wrap.append(list)
+  return wrap
+}
+
 /** Econ cards: the series behind the number. */
 function renderSeries(detail) {
   if (!detail.seriesId) return null
@@ -169,9 +212,11 @@ function renderSeries(detail) {
 }
 
 /** The point of the whole app: this history, against today's news. */
-function renderRelatedNews(detail) {
+function renderRelatedNews(detail, card) {
   if (!detail.relatedNews?.length) return null
-  const wrap = section('In today’s feed')
+  // From a history card these are today's echoes; from a news card they are
+  // the same subject as another newsroom saw it.
+  const wrap = section(card?.type === 'history' ? 'In today’s feed' : 'Elsewhere on this subject')
   const list = el('ul', 'related')
 
   for (const entry of detail.relatedNews) {
@@ -227,31 +272,37 @@ function build(card, detail) {
 
   const body = el('div', 'detail__body')
   const extract = card.detail?.extract?.trim() ?? ''
+  const dek = card.dek?.trim() ?? ''
 
   // The dek is the standfirst. Only show it when the longer text doesn't
   // already open with the same words, otherwise the view starts by repeating
   // itself.
-  const dek = card.dek?.trim() ?? ''
   if (dek && !extract.startsWith(dek.slice(0, 60))) {
     body.append(el('p', 'detail__lead', dek))
   }
 
-  // Phase 1 has no LLM text: this is the source's own prose — the Guardian
-  // article body or the Wikipedia intro.
-  const paragraphs = (extract || dek).split(/\n{2,}|\n/).map((p) => p.trim()).filter(Boolean)
-  for (const paragraph of paragraphs) body.append(el('p', null, paragraph))
+  // Only the longer text goes here. Falling back to the dek meant that a card
+  // with no article body rendered the same sentence twice — once as the lead,
+  // once as the body — which is what "press for more context and it's just the
+  // same sentence" looked like.
+  if (extract) {
+    for (const paragraph of extract.split(/\n{2,}|\n/).map((p) => p.trim()).filter(Boolean)) {
+      body.append(el('p', null, paragraph))
+    }
+  }
 
-  scroller.append(body)
+  if (body.childElementCount) scroller.append(body)
 
   // The four context sections, in the order they earn their place: where this
   // sits in a sequence, the hard facts, the same-day timeline, then today.
   for (const node of [
     renderParallel(d),
+    renderPeers(d),
     renderSeries(d),
     renderChain(d),
     renderFacts(d),
     renderSameDay(d, card),
-    renderRelatedNews(d),
+    renderRelatedNews(d, card),
   ]) {
     if (node) scroller.append(node)
   }
