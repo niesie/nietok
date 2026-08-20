@@ -53,25 +53,27 @@ const ECON_TYPES = new Set(['econ', 'markets', 'trade'])
  * Enrichment is written onto the card and persists, so each costs money
  * exactly once in its life.
  */
-export function selectCandidates(cards, existingDetails, limit) {
+export function selectCandidates(cards, _unusedDetails, limit) {
+  // Read the cards, not the details file.
+  //
+  // A run collects the previous batch and submits the next one. The details
+  // map is loaded from disk before that collection, so selecting against it
+  // meant the run that collected 24 reasonings immediately re-submitted the
+  // same 24 cards — 48 calls billed for 24 enriched cards. The cards carry
+  // this run's collected enrichment already, so they are the only current
+  // source of truth.
   const needsEcon = cards
     .filter((card) => ECON_TYPES.has(card.type))
-    .filter((card) => {
-      const prior = existingDetails[card.id]
-      return !prior?.reasoning && !prior?.reasoningAttempted
-    })
+    .filter((card) => !card.detail?.reasoning && !card.detail?.reasoningAttempted)
     .sort((a, b) => b.score - a.score)
     .map((card) => ({ task: 'econ', card }))
 
   const needsParallel = cards
     .filter((card) => card.type === 'news' || card.type === 'company')
     .filter((card) => (card.topics?.length ?? 0) > 0 && card.headline)
-    .filter((card) => {
-      const prior = existingDetails[card.id]
-      // `attempted` records a card we already paid for and got nothing back
-      // from, so we do not pay to re-ask the same question forever.
-      return !prior?.parallel && !prior?.parallelAttempted
-    })
+    // `attempted` records a card we already paid for and got nothing back
+    // from, so we do not pay to re-ask the same question forever.
+    .filter((card) => !card.detail?.parallel && !card.detail?.parallelAttempted)
     .sort((a, b) => b.score - a.score)
     .map((card) => ({ task: 'parallel', card }))
 
@@ -99,8 +101,10 @@ export async function submitBatch(candidates, apiKey, detailsById = {}) {
         messages: [
           {
             role: 'user',
+            // The card's own detail first — it is this run's state, where the
+            // details map is the previous run's.
             content: isEcon
-              ? econUserMessage(card, detailsById[card.id] ?? card.detail ?? {})
+              ? econUserMessage(card, card.detail ?? detailsById[card.id] ?? {})
               : parallelUserMessage(card),
           },
         ],
