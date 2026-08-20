@@ -14,11 +14,16 @@ import {
 const MODEL = 'claude-haiku-4-5'
 const MAX_TOKENS = 300
 
-// Rough per-request estimate used to size a batch against the run quota.
-// Deliberately generous: overestimating means we submit fewer requests than we
-// could afford, which is the safe direction to be wrong in.
-const EST_INPUT_TOKENS = 420
-const EST_OUTPUT_TOKENS = MAX_TOKENS
+// Per-request estimate used to size a batch against the run quota.
+//
+// Measured against real traffic: 449 input / 96 output tokens for an economic
+// reasoning request. The first version assumed output would hit max_tokens
+// (300), which overpriced every request by roughly half and bought a third
+// fewer enrichments for the same money. Still deliberately above observed —
+// overestimating submits fewer requests than affordable, which is the safe
+// direction to be wrong in.
+const EST_INPUT_TOKENS = 520
+const EST_OUTPUT_TOKENS = 170
 
 // Cards you will actually scroll past. Enriching the long tail would spend the
 // month's budget on things nobody sees.
