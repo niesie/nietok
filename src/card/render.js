@@ -6,6 +6,7 @@ const TYPE_LABEL = {
   trade: 'Trade',
   history: 'History',
   attention: 'Attention',
+  quiz: 'Guess',
 }
 
 const MONTHS = [
@@ -97,6 +98,47 @@ export function renderSparkline(values) {
   return svg
 }
 
+/**
+ * A question with a tap-to-reveal answer.
+ *
+ * The only interaction that fits a vertical swipe feed: read a figure, guess
+ * its counterpart, tap once. Being wrong about what Americans pay for gas
+ * teaches the spread in a way that reading both numbers never does.
+ */
+function renderQuizBody(card, body) {
+  const q = card.quiz ?? {}
+
+  body.append(el('p', 'quiz__prompt', q.prompt ?? card.headline))
+  body.append(el('h2', 'quiz__question', q.question ?? card.dek))
+
+  const reveal = el('div', 'quiz__reveal')
+
+  const button = el('button', 'quiz__button', 'Tap to reveal')
+  button.type = 'button'
+  reveal.append(button)
+
+  const answer = el('div', 'quiz__answer')
+  answer.append(el('div', 'quiz__value', q.answer ?? ''))
+  if (q.multiple) {
+    answer.append(el('div', 'quiz__multiple', `${q.multiple} lower than ${q.anchorCountry}`))
+  }
+
+  if (q.entries?.length) {
+    const list = el('ol', 'quiz__list')
+    for (const entry of q.entries) {
+      const isAnswer = entry.country === q.answerCountry
+      const row = el('li', `quiz__row${isAnswer ? ' quiz__row--answer' : ''}`)
+      row.append(el('span', 'quiz__country', entry.country))
+      row.append(el('span', 'quiz__figure', entry.display))
+      list.append(row)
+    }
+    answer.append(list)
+  }
+
+  reveal.append(answer)
+  body.append(reveal)
+}
+
 export function renderCard(card) {
   const article = el('article', `card card--${card.type}`)
   article.dataset.id = card.id
@@ -135,7 +177,15 @@ export function renderCard(card) {
     kicker.append(el('span', i === 0 ? 'kicker__label' : '', part))
   })
 
-  body.append(kicker, el('h2', 'headline', card.headline))
+  body.append(kicker)
+
+  if (card.type === 'quiz') {
+    renderQuizBody(card, body)
+    article.append(body)
+    return article
+  }
+
+  body.append(el('h2', 'headline', card.headline))
   if (card.dek) body.append(el('p', 'dek', card.dek))
 
   // Neighbouring readings, on the face. A lone percentage told the reader

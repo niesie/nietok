@@ -123,7 +123,16 @@ export function createFeed(container, cards) {
     const article = event.target.closest('.card')
     if (!article) return
     const entry = mounted.find((m) => m.el === article)
-    if (entry) openDetail(entry.card)
+    if (!entry) return
+
+    // On a quiz card the first tap is the answer, not the detail view. Once
+    // revealed it behaves like any other card.
+    if (entry.card.type === 'quiz' && !article.classList.contains('is-revealed')) {
+      article.classList.add('is-revealed')
+      return
+    }
+
+    openDetail(entry.card)
   })
 
   // Long-press opens the original article. Guarded tightly so it can never

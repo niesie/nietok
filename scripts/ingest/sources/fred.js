@@ -354,6 +354,127 @@ function buildRelated(config, measured) {
     .map(({ m }) => ({ label: m.config.label, value: m.display }))
 }
 
+// A pair is only worth asking about if the answer would surprise. Below this
+// the reader shrugs, and a quiz card that teaches nothing is worse than a
+// plain one because it charged a tap for it.
+const QUIZ_MIN_RATIO = 1.9
+const MAX_QUIZ_CARDS = 4
+
+/** Countries that read wrong without a definite article. */
+const NEEDS_THE = /^(United States|United Kingdom|Netherlands|Philippines|Czech|Democratic Republic|Euro area)/
+
+const withArticle = (name) => (NEEDS_THE.test(name) ? `the ${name}` : name)
+
+/**
+ * Per-group wording.
+ *
+ * A single template cannot serve these: "Spain pays 10.1%" is not what an
+ * unemployment rate is, and "Mexico pays $33.9bn" for US *exports* reverses
+ * who is buying from whom. Each comparison needs a sentence that describes
+ * what its numbers actually are.
+ */
+const QUIZ_PHRASING = {
+  'Natural gas price by region': {
+    prompt: (c, v) => `${withArticle(c)} pays ${v} for natural gas.`,
+    question: (c) => `What does ${withArticle(c)} pay?`,
+  },
+  'Crude oil benchmark': {
+    prompt: (c, v) => `${c} trades at ${v}.`,
+    question: (c) => `And ${c}?`,
+  },
+  'US goods imports by partner': {
+    prompt: (c, v) => `The US imports ${v} of goods a month from ${withArticle(c)}.`,
+    question: (c) => `How much from ${withArticle(c)}?`,
+  },
+  'US goods exports by partner': {
+    prompt: (c, v) => `The US exports ${v} of goods a month to ${withArticle(c)}.`,
+    question: (c) => `How much to ${withArticle(c)}?`,
+  },
+  'Unemployment rate': {
+    prompt: (c, v) => `${withArticle(c)} has ${v} unemployment.`,
+    question: (c) => `What about ${withArticle(c)}?`,
+  },
+  '10-year government bond yield': {
+    prompt: (c, v) => `${withArticle(c)} borrows at ${v} over ten years.`,
+    question: (c) => `And ${withArticle(c)}?`,
+  },
+  'Consumer price inflation': {
+    prompt: (c, v) => `Inflation in ${withArticle(c)} is ${v}.`,
+    question: (c) => `And in ${withArticle(c)}?`,
+  },
+}
+
+const DEFAULT_PHRASING = {
+  prompt: (c, v) => `${withArticle(c)}: ${v}.`,
+  question: (c) => `What about ${withArticle(c)}?`,
+}
+
+/**
+ * Turn the widest gap in each comparison group into a question.
+ *
+ * The feed is something you watch rather than something you do, and this is
+ * the one interaction that fits a vertical swipe: read a figure, guess its
+ * counterpart, tap once. It also makes the number land — "European gas is
+ * $17.93" is a fact, but being wrong about what Americans pay is a lesson.
+ *
+ * Built entirely from peer groups that already exist; no extra requests.
+ */
+function buildQuizCards(peerGroups) {
+  const candidates = []
+
+  for (const [group, entries] of peerGroups) {
+    const usable = entries.filter((e) => Number.isFinite(e.value) && e.value > 0)
+    if (usable.length < 3) continue
+
+    // Entries arrive sorted high to low.
+    const high = usable[0]
+    const low = usable[usable.length - 1]
+    const ratio = high.value / low.value
+    if (!Number.isFinite(ratio) || ratio < QUIZ_MIN_RATIO) continue
+
+    candidates.push({ group, high, low, ratio, entries: usable })
+  }
+
+  // The most surprising gaps first.
+  candidates.sort((a, b) => b.ratio - a.ratio)
+
+  return candidates.slice(0, MAX_QUIZ_CARDS).map(({ group, high, low, ratio, entries }) => {
+    const multiple = ratio >= 10 ? `${Math.round(ratio)}×` : `${ratio.toFixed(1)}×`
+    const phrasing = QUIZ_PHRASING[group] ?? DEFAULT_PHRASING
+    const prompt = phrasing.prompt(high.country, high.display)
+    const question = phrasing.question(low.country)
+
+    return makeCard({
+      // Stable per group, so the same question is not re-asked every run.
+      id: makeId('quiz', group),
+      type: 'quiz',
+      headline: prompt,
+      label: group,
+      dek: question,
+      image: null,
+      source: {
+        name: 'FRED',
+        url: 'https://fred.stlouisfed.org/',
+        publishedAt: new Date(`${high.asOf}T12:00:00Z`).toISOString(),
+      },
+      topics: ['economy'],
+      region: null,
+      detail: {
+        group,
+        prompt,
+        question,
+        answer: low.display,
+        answerCountry: low.country,
+        anchorCountry: withArticle(high.country),
+        multiple,
+        // The whole ranking is the payoff — the answer plus where everyone
+        // else sits.
+        entries,
+      },
+    })
+  })
+}
+
 export async function fetchFred() {
   const key = process.env.FRED_KEY
   if (!key) return { cards: [], skipped: 'FRED_KEY not set' }
@@ -487,6 +608,8 @@ export async function fetchFred() {
 
   // Keep these apart in the report. Folding "nothing happened today" into
   // "the API failed" is how a real outage hides behind a quiet market.
+  cards.push(...buildQuizCards(peerGroups))
+
   const notes = []
   if (unremarkable.length) notes.push(`${unremarkable.length} unremarkable`)
   if (skipped.length) notes.push(`${skipped.length} UNAVAILABLE: ${skipped.join('; ')}`)

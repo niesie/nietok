@@ -15,6 +15,7 @@
   /* Attention cards measure something different from every other card:
      what people looked up, not what an editor published. */
   --accent-attention: #d98fb3;
+  --accent-quiz: #e8b04b;
 
   --serif: ui-serif, Georgia, "Iowan Old Style", "Times New Roman", Times, serif;
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
@@ -235,6 +236,108 @@ img {
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* ---------- quiz cards ---------- */
+.quiz__prompt {
+  font-size: clamp(1.15rem, 4.6vw, 1.5rem);
+  line-height: 1.3;
+  color: var(--muted);
+  margin: 0;
+}
+
+.quiz__question {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: clamp(1.8rem, 7vw, 2.6rem);
+  line-height: 1.12;
+  letter-spacing: -0.015em;
+  margin: 0.2rem 0 0.4rem;
+  text-wrap: balance;
+}
+
+.quiz__button {
+  align-self: flex-start;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: var(--accent, var(--accent-quiz));
+  border: none;
+  border-radius: 999px;
+  padding: 0.75rem 1.4rem;
+  cursor: pointer;
+}
+
+/* The answer occupies the same space the button did, so revealing does not
+   shift the rest of the card under the reader's thumb. */
+.quiz__answer {
+  display: none;
+}
+
+.card.is-revealed .quiz__button {
+  display: none;
+}
+
+.card.is-revealed .quiz__answer {
+  display: block;
+  animation: quiz-in 260ms ease both;
+}
+
+@keyframes quiz-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+}
+
+.quiz__value {
+  font-family: var(--serif);
+  font-size: clamp(2.6rem, 12vw, 4rem);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--accent, var(--accent-quiz));
+}
+
+.quiz__multiple {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: 0.5rem;
+}
+
+.quiz__list {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0.9rem 0 0;
+  border-top: 1px solid var(--rule);
+}
+
+.quiz__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.32rem 0;
+  color: var(--faint);
+  font-size: 0.92rem;
+}
+
+.quiz__row--answer {
+  color: var(--paper);
+}
+
+.quiz__figure {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card.is-revealed .quiz__answer {
+    animation: none;
+  }
 }
 
 /* Neighbouring readings on an economic card face. */

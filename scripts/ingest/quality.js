@@ -81,7 +81,9 @@ const NEWS_TYPES = new Set(['news', 'company'])
  * Returns the kept cards plus a breakdown, because a silent drop of 400 cards
  * is exactly the kind of thing that should appear in the run report.
  */
-const ECON_TYPES = new Set(['econ', 'markets', 'trade'])
+// Quiz cards are built from the same comparison groups, so they go stale the
+// same way and must be retired on the same rule.
+const ECON_TYPES = new Set(['econ', 'markets', 'trade', 'quiz'])
 
 /**
  * Drop economic cards the current run did not re-emit.

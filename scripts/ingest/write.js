@@ -85,6 +85,20 @@ function toFace(card) {
   if (card.detail?.related?.length) face.related = card.detail.related
   if (card.geo) face.geo = card.geo
 
+  // A quiz is answered on the card face, so its payload travels with the face
+  // rather than the detail — tapping must not wait on a second fetch.
+  if (card.type === 'quiz') {
+    face.quiz = {
+      prompt: card.detail.prompt,
+      question: card.detail.question,
+      answer: card.detail.answer,
+      answerCountry: card.detail.answerCountry,
+      anchorCountry: card.detail.anchorCountry,
+      multiple: card.detail.multiple,
+      entries: card.detail.entries,
+    }
+  }
+
   return face
 }
 
