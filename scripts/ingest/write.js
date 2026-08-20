@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 
+import { pruneRetained } from './quality.js'
 import { applyQuota } from './quota.js'
 
 const MAX_AGE_DAYS = 45
@@ -102,6 +103,14 @@ export async function writeFeed(cards, { path, dryRun = false } = {}) {
     return !Number.isFinite(seen) || seen >= cutoff
   })
 
+  // Current quality rules apply to the whole retained feed, not only to what
+  // this run fetched. Without this, tightening a filter changes nothing for 45
+  // days while cards ingested under the old rules sit there untouched — which
+  // is exactly what happened: the noise filter shipped and the live feed still
+  // held 86 celebrity and sport cards from before it existed.
+  const pruned = pruneRetained(merged)
+  merged = pruned.kept
+
   merged = applyQuota(merged, MAX_CARDS)
 
   if (!dryRun && merged.length === 0 && existing.length > 0) {
@@ -136,5 +145,8 @@ export async function writeFeed(cards, { path, dryRun = false } = {}) {
     path,
     detailPath,
     detailCount: Object.keys(details).length,
+    // Surfaced in the run report: dropping several hundred retained cards
+    // should be visible, not silent.
+    pruned: pruned.dropped,
   }
 }

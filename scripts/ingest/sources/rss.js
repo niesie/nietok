@@ -2,6 +2,7 @@ import { XMLParser } from 'fast-xml-parser'
 
 import { fetchWithRetry } from '../../lib/http.js'
 import { canonicalUrl, inferRegion, inferTopics, makeCard, makeId, stripHtml } from '../normalize.js'
+import { isUsable } from '../quality.js'
 
 /**
  * Named outlets, chosen for the perspectives the Guardian alone cannot give:
@@ -45,22 +46,8 @@ const FEEDS = [
 
 const DEFAULT_LIMIT = 12
 
-/**
- * Obvious non-news. This exists because Times of India's front page supplied
- * WWE results, NFL injuries, Bollywood feuds and horoscopes to what is
- * supposed to be a geopolitics feed.
- */
-const NOISE = /\b(bollywood|box office|wwe|nfl|nba|ipl|cricket|premier league|la liga|transfer window|horoscope|zodiac|astrolog|recipe|viral (reel|video)|streamer|youtuber|influencer|celebrity|actress|superstar|web series|trailer (out|drop)|teaser|grammy|oscars?|red carpet|wedding|dating|boyfriend|girlfriend|fashion week|beauty pageant|reality show|box-office|tarot|numerolog)\b/i
-
-/** Enough signal that a story is about the world rather than a local incident. */
-const GEOPOLITICAL = /\b(government|minister|president|prime minister|parliament|election|vote|policy|sanction|tariff|trade|treaty|summit|diplomat|embassy|military|troops|war|conflict|ceasefire|protest|strike|economy|economic|inflation|central bank|budget|court|law|border|migrant|refugee|nuclear|energy|oil|gas|climate|un |united nations|nato|eu |european union|security|crisis|talks|deal|agreement|aid|corruption|coup|rebel|militant|killed|attack)\b/i
-
-function isUsable(headline, dek, strict) {
-  const text = `${headline} ${dek}`
-  if (NOISE.test(text)) return false
-  if (strict && !GEOPOLITICAL.test(text)) return false
-  return true
-}
+// Shared with retention — see quality.js. Filtering only newly fetched cards
+// leaves everything already in the feed untouched for 45 days.
 
 const parser = new XMLParser({
   ignoreAttributes: false,

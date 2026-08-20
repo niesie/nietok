@@ -171,6 +171,12 @@ async function main() {
   })
 
   const written = await writeFeed(finalCards, { path, dryRun: DRY_RUN })
+  if (written.pruned && Object.values(written.pruned).some(Boolean)) {
+    const p = written.pruned
+    console.log(
+      `retention pruned: ${p.noise} noise, ${p.offTopic} off-topic, ${p.outletCap} over outlet cap`,
+    )
+  }
   console.log(`\nwrote ${written.total} cards -> ${written.path}`)
   console.log(`      ${written.detailCount} details -> ${written.detailPath}`)
 
