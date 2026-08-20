@@ -286,10 +286,14 @@ function build(card, detail) {
   scroller.replaceChildren()
   root.style.setProperty('--accent', `var(--accent-${card.type}, var(--accent-news))`)
 
+  // Anniversaries get their date; evergreen history gets its era; everything
+  // else gets source and age. A timestamp on "how bread was made" is noise.
   const kicker =
     card.type === 'history'
       ? historyDate({ detail: d })
-      : `${card.source?.name ?? ''} · ${relativeTime(card.source?.publishedAt)}`
+      : card.type === 'topic' || card.type === 'figure'
+        ? (d.era ?? card.label ?? '')
+        : `${card.source?.name ?? ''} · ${relativeTime(card.source?.publishedAt)}`
   scroller.append(el('div', 'detail__kicker', kicker))
   // An econ card's headline is bare number — meaningless without its series
   // name, which lives in the kicker on the card face.

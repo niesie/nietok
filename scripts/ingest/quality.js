@@ -81,33 +81,54 @@ const NEWS_TYPES = new Set(['news', 'company'])
  * Returns the kept cards plus a breakdown, because a silent drop of 400 cards
  * is exactly the kind of thing that should appear in the run report.
  */
-// Quiz cards are built from the same comparison groups, so they go stale the
-// same way and must be retired on the same rule.
-const ECON_TYPES = new Set(['econ', 'markets', 'trade', 'quiz'])
+/**
+ * Types whose card set is decided fresh by every run.
+ *
+ * Each of these is generated rather than collected: an economic series while it
+ * is doing something unusual, a quiz built from those series, an anniversary
+ * inside the current date window, a topic or figure inside today's rotation.
+ * If a run does not emit one, it should not be in the feed — the 45-day
+ * retention window is for news, which arrives and is superseded, not for
+ * content the pipeline regenerates from scratch each time.
+ *
+ * Getting this wrong is how "US high-yield credit spread 2.8%, down 0.1
+ * points" survived weeks after the notability gate should have retired it, and
+ * it is what would make the daily rotation pointless — yesterday's slice would
+ * simply pile up on today's.
+ */
+const REGENERATED_TYPES = new Set([
+  'econ',
+  'markets',
+  'trade',
+  'quiz',
+  'history', // anniversaries: only the current 15-day window is valid
+  'topic',
+  'figure',
+])
 
 /**
- * Drop economic cards the current run did not re-emit.
+ * Drop regenerated cards the current run did not re-emit.
  *
- * These are one-card-per-series, updated in place, and a series only becomes a
- * card while it is doing something unusual. When it stops, the card has to go —
- * otherwise it sits in the feed for 45 days as exactly the thing the notability
- * gate exists to prevent: "US high-yield credit spread 2.8%, down 0.1 points",
- * with no sparkline and no reasoning because it predates both.
- *
- * Guarded on the incoming set actually containing economic cards, so a FRED
- * outage cannot silently delete the entire economics section.
+ * Guarded per type on the incoming set actually containing that type, so an
+ * outage in one source cannot silently delete its whole section — a failed
+ * FRED fetch leaves the economic cards alone rather than wiping them.
  */
-export function pruneSupersededEcon(cards, incomingIds) {
-  const incomingEcon = cards.some((c) => ECON_TYPES.has(c.type) && incomingIds.has(c.id))
-  if (!incomingEcon) return { kept: cards, dropped: 0 }
+export function pruneSuperseded(cards, incomingIds) {
+  const incomingByType = new Set()
+  for (const card of cards) {
+    if (REGENERATED_TYPES.has(card.type) && incomingIds.has(card.id)) incomingByType.add(card.type)
+  }
 
   let dropped = 0
   const kept = cards.filter((card) => {
-    if (!ECON_TYPES.has(card.type)) return true
+    if (!REGENERATED_TYPES.has(card.type)) return true
+    // Nothing of this type arrived this run — assume the source failed.
+    if (!incomingByType.has(card.type)) return true
     if (incomingIds.has(card.id)) return true
     dropped++
     return false
   })
+
   return { kept, dropped }
 }
 

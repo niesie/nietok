@@ -200,7 +200,7 @@ async function main() {
   if (written.pruned && Object.values(written.pruned).some(Boolean)) {
     const p = written.pruned
     console.log(
-      `retention pruned: ${p.noise} noise, ${p.offTopic} off-topic, ${p.outletCap} over outlet cap`,
+      `retention pruned: ${p.noise} noise, ${p.offTopic} off-topic, ${p.outletCap} over outlet cap, ${p.superseded ?? 0} superseded`,
     )
   }
   console.log(`\nwrote ${written.total} cards -> ${written.path}`)

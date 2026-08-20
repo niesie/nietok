@@ -10,7 +10,7 @@
 const BUCKETS = [
   { name: 'news', types: ['news', 'company', 'attention'], share: 0.55 },
   { name: 'econ', types: ['econ', 'markets', 'trade', 'quiz'], share: 0.2 },
-  { name: 'history', types: ['history', 'figure'], share: 0.25 },
+  { name: 'history', types: ['history', 'figure', 'topic'], share: 0.25 },
 ]
 
 function bucketOf(card) {

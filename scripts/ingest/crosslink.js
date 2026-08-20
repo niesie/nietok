@@ -2,6 +2,7 @@ const MAX_SAME_DAY = 8
 const MAX_RELATED_NEWS = 3
 
 const NEWS_TYPES = new Set(['news', 'company', 'econ', 'markets', 'trade'])
+const HISTORY_TYPES = new Set(['history', 'topic', 'figure'])
 
 /**
  * "Also on this day" — other events sharing a calendar date, across years.
@@ -13,7 +14,9 @@ export function linkSameDay(cards) {
   const byDate = new Map()
 
   for (const card of cards) {
-    if (card.type !== 'history') continue
+    // Evergreen history links to today's news too — a card about the Silk Road
+    // or about Mansa Musa earns the same connection an anniversary does.
+    if (!HISTORY_TYPES.has(card.type)) continue
     const { month, day } = card.detail ?? {}
     if (!month || !day) continue
     const key = `${month}-${day}`
@@ -112,7 +115,9 @@ export function linkHistoryToNews(cards) {
   if (news.length === 0) return cards
 
   for (const card of cards) {
-    if (card.type !== 'history') continue
+    // Evergreen history links to today's news too — a card about the Silk Road
+    // or about Mansa Musa earns the same connection an anniversary does.
+    if (!HISTORY_TYPES.has(card.type)) continue
     const topics = new Set(card.topics ?? [])
     if (topics.size === 0) continue
 

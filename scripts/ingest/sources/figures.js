@@ -3,9 +3,15 @@ import { join } from 'node:path'
 
 import { FIGURES } from '../../../content/figures.js'
 import { inferRegion, inferTopics, makeCard, makeId } from '../normalize.js'
+import { rotatingSlice } from '../rotate.js'
 import { enrichWikipediaPages } from './wikipedia-enrich.js'
 
 const REFRESH_AFTER_HOURS = 20
+
+// How many of the pool appear on any given day. At ~250 figures this cycles
+// roughly every five days, so a card returns after a gap rather than sitting
+// in the feed permanently.
+const DAILY_SLICE = 48
 
 // A card needs a life, not a stub.
 const MIN_EXTRACT = 300
@@ -62,7 +68,9 @@ export async function fetchFigures({ dataDir = join(process.cwd(), 'public', 'da
     // No state — fetch.
   }
 
-  const byTitle = new Map(FIGURES.map((f) => [f.title, f]))
+  // Today's slice, not the whole pool — see rotate.js.
+  const todays = rotatingSlice(FIGURES, DAILY_SLICE, 0)
+  const byTitle = new Map(todays.map((f) => [f.title, f]))
   const pages = await enrichWikipediaPages([...byTitle.keys()])
 
   const cards = []

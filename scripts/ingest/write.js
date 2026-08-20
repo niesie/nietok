@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 
-import { pruneRetained, pruneSupersededEcon } from './quality.js'
+import { pruneRetained, pruneSuperseded } from './quality.js'
 import { applyQuota } from './quota.js'
 
 const MAX_AGE_DAYS = 45
@@ -126,9 +126,10 @@ export async function writeFeed(cards, { path, dryRun = false } = {}) {
   // days while cards ingested under the old rules sit there untouched — which
   // is exactly what happened: the noise filter shipped and the live feed still
   // held 86 celebrity and sport cards from before it existed.
-  // An economic series that has stopped being remarkable must lose its card,
-  // not linger for the retention window.
-  const superseded = pruneSupersededEcon(merged, new Set(stamped.map((c) => c.id)))
+  // Anything the pipeline regenerates each run — economic series, quizzes,
+  // anniversaries, and today's slice of topics and figures — is valid only if
+  // this run emitted it. News is exempt: it arrives and ages out instead.
+  const superseded = pruneSuperseded(merged, new Set(stamped.map((c) => c.id)))
   merged = superseded.kept
 
   const pruned = pruneRetained(merged)
@@ -170,6 +171,6 @@ export async function writeFeed(cards, { path, dryRun = false } = {}) {
     detailCount: Object.keys(details).length,
     // Surfaced in the run report: dropping several hundred retained cards
     // should be visible, not silent.
-    pruned: { ...pruned.dropped, supersededEcon: superseded.dropped },
+    pruned: { ...pruned.dropped, superseded: superseded.dropped },
   }
 }

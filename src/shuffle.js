@@ -3,7 +3,7 @@ import { seenSet } from './state.js'
 const BUCKETS = [
   { name: 'news', types: ['news', 'company', 'attention'], weight: 0.55 },
   { name: 'econ', types: ['econ', 'markets', 'trade', 'quiz'], weight: 0.2 },
-  { name: 'history', types: ['history', 'figure'], weight: 0.25 },
+  { name: 'history', types: ['history', 'figure', 'topic'], weight: 0.25 },
 ]
 
 const MAX_RUN = 2 // never three cards from the same bucket in a row

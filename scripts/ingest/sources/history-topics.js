@@ -3,10 +3,16 @@ import { join } from 'node:path'
 
 import { HISTORY_TOPICS } from '../../../content/history-topics.js'
 import { inferRegion, inferTopics, makeCard, makeId } from '../normalize.js'
+import { rotatingSlice } from '../rotate.js'
 import { enrichWikipediaPages } from './wikipedia-enrich.js'
 
 // Encyclopedia articles do not change hourly, and there are ~140 of them.
 const REFRESH_AFTER_HOURS = 20
+
+// Offset by 3 days against the figures pool so the two do not restart on the
+// same day and hand the reader an entirely new history section at once.
+const DAILY_SLICE = 56
+const PHASE_OFFSET = 3
 
 // Below this the article is a stub and the card would have nothing to say.
 const MIN_EXTRACT = 260
@@ -77,7 +83,9 @@ export async function fetchHistoryTopics({ dataDir = join(process.cwd(), 'public
     // No state — fetch.
   }
 
-  const byTitle = new Map(HISTORY_TOPICS.map((t) => [t.title, t]))
+  // Today's slice, not the whole pool — see rotate.js.
+  const todays = rotatingSlice(HISTORY_TOPICS, DAILY_SLICE, PHASE_OFFSET)
+  const byTitle = new Map(todays.map((t) => [t.title, t]))
   const pages = await enrichWikipediaPages([...byTitle.keys()])
 
   const cards = []
@@ -98,7 +106,10 @@ export async function fetchHistoryTopics({ dataDir = join(process.cwd(), 'public
     cards.push(
       makeCard({
         id: makeId('history-topic', title),
-        type: 'history',
+        // Its own type, not 'history'. Retention has to be able to tell an
+        // evergreen topic card from a date-anchored anniversary, because only
+        // the former should disappear when it leaves the daily rotation.
+        type: 'topic',
         headline: display,
         // The era replaces the date in the kicker: these cards are not
         // anchored to an anniversary, so showing one would be a lie.

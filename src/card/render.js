@@ -8,6 +8,7 @@ const TYPE_LABEL = {
   attention: 'Attention',
   quiz: 'Guess',
   figure: 'Figure',
+  topic: 'History',
 }
 
 const MONTHS = [
@@ -42,6 +43,10 @@ function kickerParts(card) {
     // Anniversary cards carry a real date; topic cards carry an era instead,
     // because showing a date for "how bread was made" would invent one.
     return [label, historyDate(card) || card.label].filter(Boolean)
+  }
+  // Evergreen history: an era, and no timestamp — these are not events.
+  if (card.type === 'topic' || card.type === 'figure') {
+    return [label, card.label].filter(Boolean)
   }
   // Econ cards lead with the number, so the series name goes here instead of
   // the source — "Economy · Brent crude · 2d ago" reads better than the source.

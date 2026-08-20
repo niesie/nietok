@@ -17,6 +17,7 @@
   --accent-attention: #d98fb3;
   --accent-quiz: #e8b04b;
   --accent-figure: #c9a3e0;
+  --accent-topic: #8fb3dd;
 
   --serif: ui-serif, Georgia, "Iowan Old Style", "Times New Roman", Times, serif;
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
@@ -644,11 +645,13 @@ img {
 
 /* A figure card leads with a portrait and a hook, so the name is the anchor
    and the hook needs room to breathe under it. */
+.card--topic .headline,
 .card--figure .headline {
   font-size: clamp(2rem, 8vw, 3rem);
   -webkit-line-clamp: 2;
 }
 
+.card--topic .dek,
 .card--figure .dek {
   -webkit-line-clamp: 5;
   font-size: clamp(1rem, 3.9vw, 1.15rem);
