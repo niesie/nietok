@@ -6,6 +6,7 @@ import { linkHistoryToNews, linkNewsToNews, linkSameDay } from './crosslink.js'
 import { dedupe } from './dedupe.js'
 import { tagGeography } from './geo.js'
 import { persistLedger, runEnrichment, submitNextBatch } from './enrich/index.js'
+import { applyStored, loadEnrichment, remember, saveEnrichment } from './enrich/store.js'
 import { applyQuota } from './quota.js'
 import { rank } from './rank.js'
 import { writeFeed } from './write.js'
@@ -115,6 +116,7 @@ async function main() {
     existingDetails = {}
   }
 
+  const enrichmentStore = await loadEnrichment(dataDir)
   const enrichState = await runEnrichment({ dataDir, dryRun: DRY_RUN, estimateOnly: ESTIMATE_ONLY, existingDetails })
   console.log('\nllm budget:', enrichState.budget, `| per request ${enrichState.perRequest}`)
   if (enrichState.skipped) console.log('llm: skipped —', enrichState.skipped)
@@ -145,14 +147,20 @@ async function main() {
     card.dek = figure.hook
   }
 
-  // Re-apply anything a previous run already paid for.
+  // Re-apply everything already paid for. The durable store is the authority —
+  // details.json only holds cards currently in the feed, so a rotated-out
+  // figure would otherwise come back looking unenriched and be bought again.
   for (const card of finalCards) {
+    applyStored(card, enrichmentStore[card.id])
+
+    // details.json is still read as a fallback for anything enriched before
+    // the store existed.
     const prior = existingDetails[card.id]
-    if (prior?.reasoning) applyReasoning(card, prior.reasoning)
-    if (prior?.parallel) card.detail.parallel = prior.parallel
+    if (!card.detail.reasoning && prior?.reasoning) applyReasoning(card, prior.reasoning)
+    if (!card.detail.parallel && prior?.parallel) card.detail.parallel = prior.parallel
+    if (!card.detail.figure && prior?.figure) applyFigure(card, prior.figure)
     if (prior?.parallelAttempted) card.detail.parallelAttempted = true
     if (prior?.reasoningAttempted) card.detail.reasoningAttempted = true
-    if (prior?.figure) applyFigure(card, prior.figure)
     if (prior?.figureAttempted) card.detail.figureAttempted = true
   }
 
@@ -170,11 +178,24 @@ async function main() {
 
   // Mark every id we paid to ask about, so a null answer is not bought twice.
   for (const raw of enrichState.attempted ?? []) {
-    const card = byId.get(raw.slice(2))
-    if (!card) continue
-    if (raw.startsWith('e-')) card.detail.reasoningAttempted = true
-    else if (raw.startsWith('f-')) card.detail.figureAttempted = true
-    else card.detail.parallelAttempted = true
+    const cardId = raw.slice(2)
+    const flag = raw.startsWith('e-')
+      ? 'reasoningAttempted'
+      : raw.startsWith('f-')
+        ? 'figureAttempted'
+        : 'parallelAttempted'
+    remember(enrichmentStore, cardId, { [flag]: true })
+    const card = byId.get(cardId)
+    if (card) card.detail[flag] = true
+  }
+
+  // Commit this run's results to the durable store before anything is pruned.
+  for (const p of enrichState.parallels ?? []) remember(enrichmentStore, p.cardId, { parallel: p })
+  for (const r of enrichState.reasonings ?? []) {
+    remember(enrichmentStore, r.cardId, { reasoning: r.reasoning })
+  }
+  for (const f of enrichState.figures ?? []) {
+    remember(enrichmentStore, f.cardId, { figure: { hook: f.hook, story: f.story, impact: f.impact } })
   }
 
   if (enrichState.parallels?.length || enrichState.reasonings?.length) {
@@ -186,6 +207,11 @@ async function main() {
   const submitted = await submitNextBatch(enrichState, finalCards, existingDetails)
   console.log('llm submit:', submitted)
   await persistLedger(enrichState)
+
+  if (!DRY_RUN) {
+    const stored = await saveEnrichment(dataDir, enrichmentStore)
+    console.log(`enrichment store: ${stored} entries retained`)
+  }
 
   const history = finalCards.filter((c) => c.type === 'history')
   console.log('history context:', {
