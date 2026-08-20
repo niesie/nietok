@@ -13,6 +13,7 @@ import { fetchAttention } from './sources/attention.js'
 import { fetchFred } from './sources/fred.js'
 import { fetchGdelt } from './sources/gdelt.js'
 import { fetchGuardian } from './sources/guardian.js'
+import { fetchHistoryTopics } from './sources/history-topics.js'
 import { fetchRss } from './sources/rss.js'
 import { fetchOnThisDay } from './sources/wikimedia.js'
 
@@ -37,6 +38,7 @@ const SOURCES = [
   { name: 'guardian', run: fetchGuardian },
   { name: 'rss', run: fetchRss },
   { name: 'wikimedia:onthisday', run: fetchOnThisDay },
+  { name: 'history:topics', run: fetchHistoryTopics },
   { name: 'fred', run: fetchFred },
   { name: 'attention', run: fetchAttention },
   // GDELT is deliberately not registered — see sources/gdelt.js for why.

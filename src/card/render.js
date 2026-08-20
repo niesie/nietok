@@ -38,7 +38,9 @@ export function historyDate(card) {
 function kickerParts(card) {
   const label = TYPE_LABEL[card.type] ?? 'Dispatch'
   if (card.type === 'history') {
-    return [label, historyDate(card)].filter(Boolean)
+    // Anniversary cards carry a real date; topic cards carry an era instead,
+    // because showing a date for "how bread was made" would invent one.
+    return [label, historyDate(card) || card.label].filter(Boolean)
   }
   // Econ cards lead with the number, so the series name goes here instead of
   // the source — "Economy · Brent crude · 2d ago" reads better than the source.
